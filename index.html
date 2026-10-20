@@ -1,0 +1,3341 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Project Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    /* ═══════════════════════════════════════
+       DESIGN TOKENS (same as original)
+    ═══════════════════════════════════════ */
+    :root {
+      --navy:       #0f1c3f;
+      --navy-mid:   #162450;
+      --navy-light: #1e3270;
+      --accent:     #3b82f6;
+      --accent-2:   #6366f1;
+      --gold:       #f59e0b;
+      --green:      #10b981;
+      --red:        #ef4444;
+      --purple:     #8b5cf6;
+      --orange:     #f97316;
+      --surface:    #ffffff;
+      --surface-2:  #f8fafc;
+      --surface-3:  #f1f5f9;
+      --border:     #e2e8f0;
+      --text:       #0f172a;
+      --text-muted: #64748b;
+      --text-soft:  #94a3b8;
+      --shadow-sm:  0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-md:  0 4px 16px rgba(0,0,0,.08);
+      --shadow-lg:  0 12px 40px rgba(0,0,0,.12);
+      --radius:     14px;
+      --radius-sm:  8px;
+      --font:       'Plus Jakarta Sans', sans-serif;
+      --font-mono:  'JetBrains Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      background: var(--surface-2);
+      font-family: var(--font);
+      color: var(--text);
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    /* ═══════════════════════════════════════
+       LAYOUT SHELL
+    ═══════════════════════════════════════ */
+    .app-shell { display: flex; min-height: 100vh; }
+
+    /* ═══════════════════════════════════════
+       SIDEBAR
+    ═══════════════════════════════════════ */
+    .sidebar {
+      width: 240px; flex-shrink: 0;
+      background: linear-gradient(180deg, var(--navy) 0%, var(--navy-mid) 60%, var(--navy-light) 100%);
+      color: #fff; display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; height: 100vh;
+      overflow-y: auto; z-index: 200; transition: transform .3s ease, width .3s ease;
+    }
+    .sidebar-inner { padding: 1.5rem 1.25rem; display: flex; flex-direction: column; flex: 1; }
+    .sidebar-brand {
+      display: flex; align-items: center; gap: .75rem;
+      padding-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,.1); margin-bottom: 1.25rem;
+    }
+    .brand-icon {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      font-size: .95rem; flex-shrink: 0;
+    }
+    .brand-text { font-size: .9rem; font-weight: 700; letter-spacing: -.2px; line-height: 1.2; }
+    .brand-sub  { font-size: .68rem; opacity: .5; font-weight: 400; }
+
+    .nav-label {
+      font-size: .65rem; text-transform: uppercase; letter-spacing: 1px;
+      color: rgba(255,255,255,.35); font-weight: 700; margin: 1rem 0 .4rem .5rem;
+    }
+    .nav-link-item {
+      display: flex; align-items: center; gap: .75rem;
+      padding: .6rem .85rem; border-radius: var(--radius-sm);
+      color: rgba(255,255,255,.65); text-decoration: none;
+      font-size: .82rem; font-weight: 500;
+      transition: background .18s, color .18s; margin-bottom: 2px;
+    }
+    .nav-link-item:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .nav-link-item.active {
+      background: rgba(59,130,246,.25); color: #fff;
+      border-left: 3px solid var(--accent);
+      padding-left: calc(.85rem - 3px);
+    }
+    .nav-link-item i { width: 16px; text-align: center; font-size: .8rem; }
+
+    .sidebar-user {
+      margin-top: auto; padding-top: 1rem;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .user-pill {
+      display: flex; align-items: center; gap: .65rem;
+      padding: .6rem .75rem; border-radius: var(--radius-sm);
+      background: rgba(255,255,255,.05);
+    }
+    .user-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem; font-weight: 700; flex-shrink: 0;
+    }
+    .user-name  { font-size: .8rem; font-weight: 600; color: rgba(255,255,255,.9); }
+    .user-role  { font-size: .68rem; color: rgba(255,255,255,.4); }
+    .sidebar-footer {
+      text-align: center; font-size: .65rem;
+      color: rgba(255,255,255,.25); padding: .75rem 0 0;
+    }
+
+    /* Sidebar overlay mobile */
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.45); z-index: 199;
+    }
+    .sidebar-overlay.active { display: block; }
+
+    /* ═══════════════════════════════════════
+       SIDEBAR COLLAPSE (desktop show/hide)
+    ═══════════════════════════════════════ */
+    .btn-collapse {
+      width: 30px; height: 30px; flex-shrink: 0;
+      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+      border-radius: 8px; color: rgba(255,255,255,.7); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem; transition: all .18s;
+    }
+    .btn-collapse:hover { background: rgba(255,255,255,.16); color: #fff; }
+
+    .sidebar.collapsed { width: 76px; }
+    .sidebar.collapsed .sidebar-inner { padding: 1.5rem .85rem; align-items: center; }
+    .sidebar.collapsed .sidebar-brand { justify-content: center; gap: 0; }
+    .sidebar.collapsed .brand-text,
+    .sidebar.collapsed .brand-sub,
+    .sidebar.collapsed .nav-label,
+    .sidebar.collapsed .nav-link-item span,
+    .sidebar.collapsed .user-name,
+    .sidebar.collapsed .user-role,
+    .sidebar.collapsed .sidebar-footer { display: none; }
+    .sidebar.collapsed .nav-link-item {
+      justify-content: center; padding: .6rem; gap: 0;
+    }
+    .sidebar.collapsed .nav-link-item.active { padding-left: calc(.6rem - 3px); }
+    .sidebar.collapsed .nav-link-item i { width: auto; font-size: .95rem; }
+    .sidebar.collapsed .user-pill { justify-content: center; padding: .6rem; }
+    .sidebar.collapsed .btn-collapse i { transform: rotate(180deg); }
+
+    body.sidebar-collapsed .main-content { margin-left: 76px; }
+
+    /* Floating expand handle shown when sidebar is collapsed (desktop) */
+    .sidebar-expand-handle {
+      display: none; position: fixed; top: 1.1rem; left: 76px;
+      width: 26px; height: 26px; z-index: 201;
+      background: var(--navy); color: #fff; border: 2px solid var(--surface-2);
+      border-radius: 50%; align-items: center; justify-content: center;
+      font-size: .68rem; cursor: pointer; box-shadow: var(--shadow-sm);
+      transition: left .3s ease;
+    }
+    body.sidebar-collapsed .sidebar-expand-handle { display: flex; }
+
+    /* ═══════════════════════════════════════
+       MAIN CONTENT
+    ═══════════════════════════════════════ */
+    .main-content {
+      margin-left: 240px; flex: 1; min-width: 0;
+      padding: 2rem 2rem 4rem; transition: margin-left .3s ease;
+    }
+
+    /* PAGE SECTIONS */
+    .page-section { display: none; }
+    .page-section.active { display: block; }
+
+    /* ═══════════════════════════════════════
+       TOP BAR
+    ═══════════════════════════════════════ */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;
+    }
+    .topbar-left h1 { font-size: 1.45rem; font-weight: 800; letter-spacing: -.5px; margin: 0 0 2px; }
+    .topbar-left h1 span { color: var(--accent); }
+    .topbar-left small { color: var(--text-soft); font-size: .75rem; }
+    .topbar-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+    .btn-topbar {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .5rem 1rem; border-radius: var(--radius-sm);
+      font-size: .8rem; font-weight: 600; border: none; cursor: pointer; transition: all .18s;
+    }
+    .btn-topbar-outline {
+      background: var(--surface); border: 1.5px solid var(--border); color: var(--text-muted);
+    }
+    .btn-topbar-outline:hover { border-color: var(--accent); color: var(--accent); background: #eff6ff; }
+    .btn-topbar-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff; box-shadow: 0 4px 12px rgba(59,130,246,.3);
+    }
+    .btn-topbar-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(59,130,246,.4); }
+    .btn-topbar-warning {
+      background: linear-gradient(135deg, var(--gold), var(--orange));
+      color: #fff; box-shadow: 0 4px 12px rgba(245,158,11,.3);
+    }
+    .btn-topbar-warning:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(245,158,11,.4); }
+    .btn-topbar-green {
+      background: linear-gradient(135deg, var(--green), #34d399);
+      color: #fff; box-shadow: 0 4px 12px rgba(16,185,129,.3);
+    }
+    .btn-topbar-green:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(16,185,129,.4); }
+    .btn-topbar:disabled { opacity: .55; cursor: not-allowed; transform: none !important; }
+
+    .btn-menu {
+      display: none; width: 36px; height: 36px;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); cursor: pointer;
+      align-items: center; justify-content: center;
+      color: var(--text-muted); font-size: .9rem;
+    }
+
+    /* ═══════════════════════════════════════
+       STAT CARDS
+    ═══════════════════════════════════════ */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: .85rem; margin-bottom: 1.75rem;
+    }
+    .stat-card {
+      background: var(--surface); border-radius: var(--radius); padding: 1.1rem 1.2rem;
+      box-shadow: var(--shadow-sm); border: 1.5px solid var(--border);
+      position: relative; overflow: hidden; transition: transform .2s, box-shadow .2s;
+    }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+    .stat-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    }
+    .stat-card.blue::before   { background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+    .stat-card.indigo::before { background: linear-gradient(90deg, var(--accent-2), #a855f7); }
+    .stat-card.green::before  { background: linear-gradient(90deg, var(--green), #34d399); }
+    .stat-card.red::before    { background: linear-gradient(90deg, var(--red), #f97316); }
+    .stat-card.amber::before  { background: linear-gradient(90deg, var(--gold), #fcd34d); }
+    .stat-card.purple::before { background: linear-gradient(90deg, var(--purple), #ec4899); }
+    .stat-card.teal::before   { background: linear-gradient(90deg, #14b8a6, #06b6d4); }
+    .stat-card.orange::before { background: linear-gradient(90deg, var(--orange), var(--gold)); }
+
+    .stat-icon-wrap {
+      width: 34px; height: 34px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: .6rem; font-size: .85rem;
+    }
+    .stat-card.blue   .stat-icon-wrap { background: #eff6ff; color: var(--accent); }
+    .stat-card.indigo .stat-icon-wrap { background: #eef2ff; color: var(--accent-2); }
+    .stat-card.green  .stat-icon-wrap { background: #ecfdf5; color: var(--green); }
+    .stat-card.red    .stat-icon-wrap { background: #fef2f2; color: var(--red); }
+    .stat-card.amber  .stat-icon-wrap { background: #fffbeb; color: var(--gold); }
+    .stat-card.purple .stat-icon-wrap { background: #faf5ff; color: var(--purple); }
+    .stat-card.teal   .stat-icon-wrap { background: #f0fdfa; color: #14b8a6; }
+    .stat-card.orange .stat-icon-wrap { background: #fff7ed; color: var(--orange); }
+
+    .stat-label {
+      font-size: .68rem; text-transform: uppercase; letter-spacing: .6px;
+      color: var(--text-muted); font-weight: 700; margin-bottom: .2rem;
+    }
+    .stat-value {
+      font-size: 1.85rem; font-weight: 800; letter-spacing: -1px;
+      line-height: 1; font-family: var(--font-mono);
+    }
+    .stat-card.blue   .stat-value { color: var(--navy); }
+    .stat-card.indigo .stat-value { color: #3730a3; }
+    .stat-card.green  .stat-value { color: #065f46; }
+    .stat-card.red    .stat-value { color: #991b1b; }
+    .stat-card.amber  .stat-value { color: #78350f; }
+    .stat-card.purple .stat-value { color: #4c1d95; }
+    .stat-card.teal   .stat-value { color: #134e4a; }
+    .stat-card.orange .stat-value { color: #7c2d12; }
+
+    /* ═══════════════════════════════════════
+       CARD PANEL
+    ═══════════════════════════════════════ */
+    .card-panel {
+      background: var(--surface); border-radius: var(--radius);
+      border: 1.5px solid var(--border); box-shadow: var(--shadow-sm);
+      padding: 1rem; margin-bottom: 1.25rem;
+    }
+    .section-label {
+      font-size: .7rem; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--text-soft); font-weight: 700;
+    }
+
+    /* Assignee chips */
+    .assignee-chip {
+      background: var(--surface-2); border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); padding: .65rem .5rem;
+      text-align: center; transition: all .2s; cursor: default;
+      min-width: 0; display: flex; flex-direction: column;
+      justify-content: space-between; height: 100%;
+    }
+    .assignee-chip:hover { background: var(--surface); border-color: var(--accent); box-shadow: var(--shadow-sm); }
+    .assignee-chip.active-filter { border-color: var(--accent); background: #eff6ff; }
+    .assignee-chip-name {
+      font-size: .75rem; font-weight: 700; color: var(--text);
+      white-space: normal; word-break: break-word; line-height: 1.3;
+      margin-bottom: .25rem; display: -webkit-box;
+      -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .assignee-chip-count {
+      font-size: 1.3rem; font-weight: 800; color: var(--accent);
+      font-family: var(--font-mono); line-height: 1.2; margin: .25rem 0;
+    }
+    .assignee-chip-bar { height: 3px; border-radius: 2px; background: var(--border); margin: .3rem 0 .2rem; }
+    .assignee-chip-fill { height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); width: 0%; }
+    .assignee-chip-pct { font-size: .6rem; color: var(--text-soft); margin-top: .2rem; }
+
+    /* ═══════════════════════════════════════
+       FILTER PANEL - Horizontal & Adjustable
+    ═══════════════════════════════════════ */
+    .filter-panel {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1.5px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 0.75rem 1rem;
+    }
+
+    .filter-item {
+      flex: 1 1 140px;
+      min-width: 120px;
+    }
+
+    .search-item {
+      flex: 2 1 200px;
+      min-width: 160px;
+    }
+
+    .reset-item {
+      flex: 0 0 auto;
+      min-width: unset;
+    }
+
+    .filter-label {
+      font-size: 0.67rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 0.3rem;
+    }
+
+    .form-select, .form-control {
+      font-size: .82rem; border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text);
+      padding: .45rem .75rem; background: var(--surface-2);
+      transition: border-color .18s, box-shadow .18s;
+    }
+    .form-select:focus, .form-control:focus {
+      border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+      background: var(--surface); outline: none;
+    }
+    .input-group-text {
+      background: var(--surface-2); border: 1.5px solid var(--border); border-right: none;
+      color: var(--text-soft); border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+      font-size: .8rem; padding: .45rem .7rem;
+    }
+    .input-group .form-control { border-left: none; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+
+    .btn-reset {
+      width: 100%;
+      padding: 0.45rem;
+      background: var(--surface-2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: all 0.18s;
+      white-space: nowrap;
+    }
+    .btn-reset:hover {
+      border-color: var(--red);
+      color: var(--red);
+      background: #fef2f2;
+    }
+
+    @media (max-width: 991px) {
+      .filter-item { flex-basis: 160px; }
+      .search-item { flex-basis: 220px; }
+    }
+    @media (max-width: 768px) {
+      .filter-row { gap: 0.75rem; }
+      .filter-item { flex-basis: calc(50% - 0.75rem); min-width: 130px; }
+      .search-item { flex-basis: calc(50% - 0.75rem); }
+      .reset-item { flex-basis: auto; width: auto; }
+    }
+    @media (max-width: 480px) {
+      .filter-item, .search-item, .reset-item { flex-basis: 100%; }
+      .btn-reset { width: auto; margin-top: 0.25rem; }
+    }
+
+    /* ═══════════════════════════════════════
+       TASK TABLE
+    ═══════════════════════════════════════ */
+    .table-panel {
+      background: var(--surface); border-radius: var(--radius);
+      border: 1.5px solid var(--border); box-shadow: var(--shadow-sm); overflow: hidden;
+    }
+    .table-responsive { overflow-x: auto; }
+    .task-table { width: 100%; border-collapse: collapse; margin: 0; }
+    .task-table thead th {
+      background: var(--surface-3); font-size: .68rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .6px;
+      color: var(--text-muted); padding: .85rem 1rem;
+      border-bottom: 1.5px solid var(--border); white-space: nowrap;
+    }
+    .task-table tbody td {
+      padding: .8rem 1rem; border-bottom: 1px solid var(--surface-3);
+      font-size: .82rem; vertical-align: middle;
+    }
+    .task-table tbody tr:last-child td { border-bottom: none; }
+    .task-table tbody tr:hover td { background: var(--surface-2); }
+    .task-table tbody tr.overdue-row td { background: #fff8f8; }
+    .task-table tbody tr.overdue-row:hover td { background: #fef2f2; }
+
+    .task-table th:nth-child(1), .task-table td:nth-child(1) { width: 40px; text-align: center; }
+    .task-table th:nth-child(2), .task-table td:nth-child(2) { width: 60px; }
+    .task-table th:nth-child(3), .task-table td:nth-child(3) { width: 120px; }
+    .task-table th:nth-child(4), .task-table td:nth-child(4) { min-width: 200px; max-width: 280px; }
+    .task-table th:nth-child(5), .task-table td:nth-child(5) { width: 120px; }
+    .task-table th:nth-child(6), .task-table td:nth-child(6) { width: 130px; }
+    .task-table th:nth-child(7), .task-table td:nth-child(7) { width: 130px; }
+    .task-table th:nth-child(8), .task-table td:nth-child(8) { width: 105px; }
+    .task-table th:nth-child(9), .task-table td:nth-child(9) { width: 85px; }
+    .task-table th:nth-child(10), .task-table td:nth-child(10) { width: 100px; }
+    .task-table th:nth-child(11), .task-table td:nth-child(11) { width: 120px; }
+    .task-table th:last-child, .task-table td:last-child { width: 90px; text-align: center; }
+    .task-table td:nth-child(4) { word-break: break-word; white-space: normal; }
+
+    .task-title { font-weight: 700; font-size: .85rem; display: block; margin-bottom: 2px; color: var(--text); }
+    .task-desc {
+      font-size: .72rem; color: var(--text-muted); line-height: 1.3; display: block;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px;
+    }
+
+    /* Badges */
+    .badge-status {
+      padding: .3rem .7rem; border-radius: 20px; font-size: .68rem; font-weight: 700;
+      display: inline-block; text-align: center; min-width: 76px;
+    }
+    .s-todo     { background: #f1f5f9; color: #64748b; }
+    .s-progress { background: #dbeafe; color: #1d4ed8; }
+    .s-done     { background: #dcfce7; color: #15803d; }
+    .s-closed   { background: #f3f4f6; color: #374151; }
+
+    .badge-priority {
+      padding: .3rem .65rem; border-radius: 20px; font-size: .68rem; font-weight: 700; display: inline-block;
+    }
+    .p-urgent { background: #fee2e2; color: #b91c1c; }
+    .p-high   { background: #ffedd5; color: #c2410c; }
+    .p-medium { background: #fef9c3; color: #92400e; }
+    .p-low    { background: #dcfce7; color: #166534; }
+
+    .badge-kategori {
+      background: #f1f5f9; padding: .3rem .65rem; border-radius: 20px;
+      font-size: .68rem; font-weight: 600; color: #334155; white-space: nowrap;
+    }
+    .badge-kendala {
+      background: #fff7ed; color: #c2410c; padding: .2rem .55rem;
+      border-radius: 20px; font-size: .65rem; font-weight: 700;
+      border: 1px solid #fed7aa; margin-left: 4px; white-space: nowrap;
+    }
+    .overdue-badge { font-size: .65rem; color: var(--red); font-weight: 700; margin-left: 4px; }
+    .task-id { font-family: var(--font-mono); font-size: .72rem; color: var(--text-soft); font-weight: 600; }
+
+    /* Actions */
+    .table-actions { display: flex; gap: 4px; justify-content: center; }
+    .btn-action {
+      width: 28px; height: 28px; border: none; background: transparent;
+      border-radius: 6px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem; transition: all .15s;
+    }
+    .btn-action.view   { color: var(--accent); }
+    .btn-action.view:hover   { background: #dbeafe; }
+    .btn-action.edit   { color: var(--gold); }
+    .btn-action.edit:hover   { background: #fef3c7; }
+    .btn-action.delete { color: var(--red); }
+    .btn-action.delete:hover { background: #fee2e2; }
+    .btn-action.kendala { color: var(--orange); }
+    .btn-action.kendala:hover { background: #fff7ed; }
+
+    input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
+
+    /* ═══════════════════════════════════════
+       SORTABLE TABLE HEADERS
+    ═══════════════════════════════════════ */
+    .sortable-th { cursor: pointer; user-select: none; position: relative; }
+    .sortable-th:hover { color: var(--accent); background: var(--surface-2); }
+    .sort-icon {
+      display: inline-block; margin-left: 4px; font-size: .62rem;
+      color: var(--text-soft); opacity: .5; transition: opacity .15s, color .15s;
+    }
+    .sortable-th.sort-active .sort-icon { opacity: 1; color: var(--accent); }
+    .sortable-th.sort-active { color: var(--accent); }
+
+    /* ═══════════════════════════════════════
+       ASSIGNEE FILTER BANNER
+    ═══════════════════════════════════════ */
+    .assignee-filter-banner {
+      display: none; align-items: center; gap: .75rem;
+      padding: .65rem 1rem;
+      background: linear-gradient(135deg, #eff6ff, #eef2ff);
+      border: 1.5px solid #bfdbfe; border-radius: var(--radius-sm);
+      margin-bottom: 1rem; font-size: .82rem; color: #1d4ed8; font-weight: 600;
+    }
+    .assignee-filter-banner.show { display: flex; }
+    .assignee-filter-banner .clear-btn {
+      margin-left: auto; cursor: pointer; background: none; border: none;
+      color: #1d4ed8; font-size: .78rem; padding: 0; font-weight: 600;
+    }
+    .assignee-filter-banner .clear-btn:hover { text-decoration: underline; }
+
+    /* ═══════════════════════════════════════
+       PAGINATION
+    ═══════════════════════════════════════ */
+    .table-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .85rem 1rem; border-top: 1.5px solid var(--border);
+      flex-wrap: wrap; gap: .5rem;
+    }
+    .pagination-info { font-size: .75rem; color: var(--text-muted); }
+    .pagination-controls { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
+    .page-btn {
+      padding: .35rem .75rem; background: var(--surface-2); border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); font-size: .75rem; font-weight: 600;
+      color: var(--text-muted); cursor: pointer; transition: all .15s;
+    }
+    .page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); background: #eff6ff; }
+    .page-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .page-btn.icon-btn { padding: .35rem .55rem; line-height: 1; }
+    .page-indicator {
+      padding: .35rem .75rem; background: var(--navy); color: #fff;
+      border-radius: var(--radius-sm); font-size: .73rem; font-weight: 700; font-family: var(--font-mono);
+    }
+    .page-jump {
+      display: flex; align-items: center; gap: .35rem;
+      padding: .3rem .5rem; background: var(--surface-2); border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); font-size: .73rem; color: var(--text-muted); font-weight: 600;
+    }
+    .page-jump-input {
+      width: 42px; text-align: center; border: 1.5px solid var(--border);
+      border-radius: 6px; font-size: .75rem; font-weight: 700; font-family: var(--font-mono);
+      color: var(--navy); padding: .25rem .2rem; background: var(--surface);
+      -moz-appearance: textfield;
+    }
+    .page-jump-input::-webkit-outer-spin-button,
+    .page-jump-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .page-jump-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,.12); outline: none; }
+    .page-jump-sep { color: var(--text-soft); }
+    .page-jump-total { font-family: var(--font-mono); }
+    @media (max-width: 480px) {
+      .pagination-controls { width: 100%; justify-content: space-between; }
+    }
+
+    /* ═══════════════════════════════════════
+       EMPTY STATE
+    ═══════════════════════════════════════ */
+    .empty-state { padding: 3.5rem 1rem; text-align: center; color: var(--text-soft); }
+    .empty-state i { font-size: 2rem; margin-bottom: .75rem; display: block; }
+    .empty-state p { font-size: .85rem; margin: 0; }
+
+    /* ═══════════════════════════════════════
+       BULK BAR (status bulk-update)
+       — fixed: buttons/inputs now use dedicated,
+         high-contrast styles instead of reusing
+         the light "outline" button on a dark pill
+    ═══════════════════════════════════════ */
+    #bulkBar {
+      display: none; position: fixed; bottom: 1.5rem; left: 50%;
+      transform: translateX(-50%); background: var(--navy); color: #fff;
+      padding: .6rem 1.1rem; border-radius: 50px; box-shadow: var(--shadow-lg);
+      z-index: 1050; gap: 10px; align-items: center; white-space: nowrap;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    #bulkBar.visible { display: flex; }
+    #bulkCount { font-size: .8rem; font-weight: 600; color: rgba(255,255,255,.85); padding-left: .25rem; }
+    #bulkBar .form-select {
+      font-size: .78rem;
+      padding: .35rem .7rem;
+      width: 140px;
+      background: rgba(255,255,255,.12);
+      border: 1.5px solid rgba(255,255,255,.28);
+      color: #fff;
+      border-radius: 8px;
+    }
+    #bulkBar .form-select:focus {
+      background: rgba(255,255,255,.18);
+      border-color: rgba(255,255,255,.55);
+      box-shadow: 0 0 0 3px rgba(255,255,255,.12);
+      outline: none;
+    }
+    #bulkBar .form-select option { background: var(--navy); color: #fff; }
+
+    .btn-bulk-apply {
+      padding: .4rem .9rem; font-size: .78rem; font-weight: 700; border: none; border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff;
+      cursor: pointer; transition: all .18s; white-space: nowrap;
+    }
+    .btn-bulk-apply:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(59,130,246,.45); }
+
+    .btn-bulk-cancel {
+      padding: .4rem .9rem; font-size: .78rem; font-weight: 700; border-radius: 8px;
+      background: rgba(255,255,255,.08); border: 1.5px solid rgba(255,255,255,.28);
+      color: #fff; cursor: pointer; transition: all .18s; white-space: nowrap;
+    }
+    .btn-bulk-cancel:hover { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.5); }
+
+    /* ═══════════════════════════════════════
+       BULK UPLOAD (Excel massal)
+    ═══════════════════════════════════════ */
+    .bulk-upload-dropzone {
+      border: 2px dashed var(--border); border-radius: var(--radius);
+      background: var(--surface-2); padding: 2rem 1rem; text-align: center;
+      cursor: pointer; transition: all .18s;
+    }
+    .bulk-upload-dropzone:hover, .bulk-upload-dropzone.dragover {
+      border-color: var(--accent); background: #eff6ff;
+    }
+    .bulk-upload-dropzone i { font-size: 1.8rem; color: var(--accent); margin-bottom: .5rem; display: block; }
+    .bulk-upload-dropzone .dz-title { font-size: .85rem; font-weight: 700; color: var(--text); margin-bottom: .2rem; }
+    .bulk-upload-dropzone .dz-sub { font-size: .73rem; color: var(--text-soft); }
+    .bulk-upload-filename {
+      display: none; align-items: center; gap: .6rem;
+      background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: var(--radius-sm);
+      padding: .6rem .85rem; margin-top: .85rem; font-size: .8rem; color: #1d4ed8; font-weight: 600;
+    }
+    .bulk-upload-filename.show { display: flex; }
+    .bulk-upload-filename .remove-file { margin-left: auto; cursor: pointer; color: var(--red); background: none; border: none; font-size: .85rem; }
+
+    .bulk-summary-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: .6rem; margin-bottom: 1rem; }
+    .bulk-summary-card {
+      border-radius: var(--radius-sm); padding: .8rem; text-align: center;
+      border: 1.5px solid var(--border); background: var(--surface-2);
+    }
+    .bulk-summary-card.success { border-color: #bbf7d0; background: #f0fdf4; }
+    .bulk-summary-card.fail    { border-color: #fecaca; background: #fef2f2; }
+    .bulk-summary-num  { font-size: 1.6rem; font-weight: 800; font-family: var(--font-mono); line-height: 1; }
+    .bulk-summary-card.success .bulk-summary-num { color: #15803d; }
+    .bulk-summary-card.fail .bulk-summary-num    { color: #b91c1c; }
+    .bulk-summary-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); font-weight: 700; margin-top: .2rem; }
+
+    .bulk-error-item {
+      background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius-sm);
+      padding: .55rem .75rem; margin-bottom: .5rem; font-size: .78rem; color: #7f1d1d;
+    }
+    .bulk-error-item b { color: #b91c1c; }
+
+    /* ═══════════════════════════════════════
+       MODAL
+    ═══════════════════════════════════════ */
+    .modal-content { border-radius: 18px; border: none; box-shadow: var(--shadow-lg); }
+    .modal-header { border-bottom: 1.5px solid var(--border); padding: 1.25rem 1.5rem; }
+    .modal-body { padding: 1.5rem; }
+    .modal-footer { border-top: 1.5px solid var(--border); padding: 1rem 1.5rem; }
+    .modal-title { font-size: .95rem; font-weight: 700; }
+    .form-label { font-size: .78rem; font-weight: 700; color: var(--text-muted); margin-bottom: .35rem; }
+
+    /* ═══════════════════════════════════════
+       KENDALA SPECIFIC
+    ═══════════════════════════════════════ */
+    .kendala-item {
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); padding: .85rem 1rem; margin-bottom: .65rem;
+      transition: box-shadow .18s;
+    }
+    .kendala-item:hover { box-shadow: var(--shadow-sm); }
+    .kendala-item.status-open    { border-left: 3px solid var(--red); }
+    .kendala-item.status-progress { border-left: 3px solid var(--accent); }
+    .kendala-item.status-resolved { border-left: 3px solid var(--green); }
+
+    .kendala-status-badge {
+      padding: .25rem .65rem; border-radius: 20px;
+      font-size: .67rem; font-weight: 700; white-space: nowrap;
+    }
+    .ks-open     { background: #fee2e2; color: #b91c1c; }
+    .ks-progress { background: #dbeafe; color: #1d4ed8; }
+    .ks-resolved { background: #dcfce7; color: #15803d; }
+
+    /* Kendala page table */
+    .kendala-table { width: 100%; border-collapse: collapse; margin: 0; }
+    .kendala-table thead th {
+      background: var(--surface-3); font-size: .68rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted);
+      padding: .85rem 1rem; border-bottom: 1.5px solid var(--border); white-space: nowrap;
+    }
+    .kendala-table tbody td {
+      padding: .8rem 1rem; border-bottom: 1px solid var(--surface-3);
+      font-size: .82rem; vertical-align: middle;
+    }
+    .kendala-table tbody tr:last-child td { border-bottom: none; }
+    .kendala-table tbody tr:hover td { background: var(--surface-2); }
+
+    /* ═══════════════════════════════════════
+       LOADING & TOAST
+    ═══════════════════════════════════════ */
+    .loading-overlay {
+      position: fixed; inset: 0; background: rgba(15,23,42,.4);
+      z-index: 9999; display: flex; align-items: center; justify-content: center;
+    }
+    .spinner-box {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 2rem 2.5rem; text-align: center; box-shadow: var(--shadow-lg);
+    }
+    .toast-stack { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9998; display: flex; flex-direction: column; gap: 8px; }
+    .toast-item {
+      padding: .65rem 1.1rem; border-radius: 10px; font-size: .82rem; font-weight: 600;
+      color: #fff; box-shadow: var(--shadow-md); animation: slideUp .25s ease; max-width: 300px;
+    }
+    .toast-success { background: #16a34a; }
+    .toast-error   { background: var(--red); }
+    .toast-info    { background: var(--accent); }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* ═══════════════════════════════════════
+       COMMENTS
+    ═══════════════════════════════════════ */
+    .comment-thread { border-left: 2px solid var(--border); padding-left: 1rem; margin-top: .65rem; }
+    .comment-item {
+      background: var(--surface-2); border-radius: var(--radius-sm);
+      padding: .75rem 1rem; margin-bottom: .65rem; font-size: .83rem; border: 1px solid var(--border);
+    }
+    .comment-author { font-weight: 700; font-size: .78rem; }
+    .comment-meta   { font-size: .7rem; color: var(--text-soft); }
+    .reply-area {
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); padding: .75rem; margin-top: .5rem; display: none;
+    }
+
+    /* Detail table */
+    .detail-table th { font-size: .75rem; font-weight: 700; color: var(--text-muted); width: 130px; padding: .5rem .75rem; }
+    .detail-table td { font-size: .82rem; padding: .5rem .75rem; }
+
+    /* ═══════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════ */
+    @media (max-width: 991px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main-content { margin-left: 0; padding: 1.25rem 1rem 4rem; }
+      .btn-menu { display: flex; }
+      .sidebar-expand-handle { display: none !important; }
+      body.sidebar-collapsed .main-content { margin-left: 0; }
+    }
+    @media (max-width: 767px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .topbar-left h1 { font-size: 1.15rem; }
+      .bulk-summary-cards { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: .6rem; }
+      .stat-value { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<div class="app-shell">
+  <!-- ═══════ SIDEBAR ═══════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-inner">
+      <div class="sidebar-brand">
+        <div class="brand-icon"><i class="fas fa-layer-group" style="color:#fff"></i></div>
+        <div>
+          <div class="brand-text">Digital Enablement</div>
+          <div class="brand-sub">Project Management</div>
+        </div>
+        <button class="btn-collapse ms-auto" id="collapseToggle" onclick="toggleSidebarCollapse()" title="Sembunyikan sidebar">
+          <i class="fas fa-angles-left"></i>
+        </button>
+      </div>
+
+      <div class="nav-label">Menu</div>
+      <nav>
+        <a href="#" class="nav-link-item active" id="nav-dashboard" onclick="showPage('dashboard'); closeSidebar(); return false;">
+          <i class="fas fa-chart-bar"></i> <span>Dashboard</span>
+        </a>
+        <a href="#" class="nav-link-item" id="nav-kendala" onclick="showPage('kendala'); closeSidebar(); return false;">
+          <i class="fas fa-exclamation-triangle"></i> <span>Follow Up Kendala</span>
+        </a>
+        <a href="#" class="nav-link-item" id="nav-add-task" onclick="showAddTaskModal(); closeSidebar(); return false;">
+          <i class="fas fa-plus-circle"></i> <span>Tambah Tugas</span>
+        </a>
+        <a href="#" class="nav-link-item" id="nav-bulk-upload" onclick="showBulkUploadModal(); closeSidebar(); return false;">
+          <i class="fas fa-file-upload"></i> <span>Upload Massal</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-user">
+        <div class="user-pill">
+          <div class="user-avatar" id="userAvatar">?</div>
+          <div>
+            <div class="user-name" id="currentUserName">Memuat...</div>
+            <div class="user-role" id="currentUserRole"></div>
+          </div>
+        </div>
+        <div class="sidebar-footer">© 2026 Project Management By Fiq</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Floating handle to re-expand sidebar when collapsed (desktop) -->
+  <button class="sidebar-expand-handle" id="sidebarExpandHandle" onclick="toggleSidebarCollapse()" title="Tampilkan sidebar">
+    <i class="fas fa-angles-right"></i>
+  </button>
+
+  <!-- ═══════ MAIN ═══════ -->
+  <main class="main-content" id="mainContent">
+
+    <!-- ══════════════════════════════════════
+         PAGE: DASHBOARD
+    ══════════════════════════════════════ -->
+    <div id="page-dashboard" class="page-section active">
+
+      <!-- TOP BAR -->
+      <div class="topbar">
+        <div class="d-flex align-items-center gap-3">
+          <button class="btn-menu" id="menuToggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+          <div class="topbar-left">
+            <h1>Project <span>Dashboard</span></h1>
+            <small id="lastRefreshed">Memuat data...</small>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn-topbar btn-topbar-outline" onclick="refreshAll()">
+            <i class="fas fa-sync-alt"></i><span class="d-none d-sm-inline">Refresh</span>
+          </button>
+          <button class="btn-topbar btn-topbar-green" onclick="showBulkUploadModal()">
+            <i class="fas fa-file-upload"></i><span class="d-none d-sm-inline">Upload Massal</span>
+          </button>
+          <button class="btn-topbar btn-topbar-primary" onclick="showAddTaskModal()">
+            <i class="fas fa-plus"></i><span class="d-none d-sm-inline">Tugas Baru</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ASSIGNEE FILTER BANNER -->
+      <div class="assignee-filter-banner" id="assigneeFilterBanner">
+        <i class="fas fa-filter"></i>
+        <span>Menampilkan data untuk: <strong id="bannerAssigneeName">—</strong></span>
+        <button class="clear-btn" onclick="clearAssigneeFilter()"><i class="fas fa-times me-1"></i>Hapus Filter</button>
+      </div>
+
+      <!-- STAT CARDS -->
+      <div class="stats-grid">
+        <div class="stat-card blue">
+          <div class="stat-icon-wrap"><i class="fas fa-tasks"></i></div>
+          <div class="stat-label">Total Tugas</div>
+          <div class="stat-value" id="statTotal">—</div>
+        </div>
+        <div class="stat-card teal">
+          <div class="stat-icon-wrap"><i class="fas fa-clipboard"></i></div>
+          <div class="stat-label">To Do</div>
+          <div class="stat-value" id="statToDo">—</div>
+        </div>
+        <div class="stat-card indigo">
+          <div class="stat-icon-wrap"><i class="fas fa-spinner"></i></div>
+          <div class="stat-label">In Progress</div>
+          <div class="stat-value" id="statInProgress">—</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon-wrap"><i class="fas fa-check-circle"></i></div>
+          <div class="stat-label">Done</div>
+          <div class="stat-value" id="statDone">—</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-icon-wrap"><i class="fas fa-calendar-times"></i></div>
+          <div class="stat-label">Overdue</div>
+          <div class="stat-value" id="statOverdue">—</div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-icon-wrap"><i class="fas fa-exclamation-triangle"></i></div>
+          <div class="stat-label">Urgent</div>
+          <div class="stat-value" id="statUrgentPriority">—</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-icon-wrap"><i class="fas fa-database"></i></div>
+          <div class="stat-label">Total Data</div>
+          <div class="stat-value" id="statTotalJumlahData">—</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-icon-wrap"><i class="fas fa-exclamation-circle"></i></div>
+          <div class="stat-label">Kendala</div>
+          <div class="stat-value" id="statKendalaOpen">—</div>
+        </div>
+      </div>
+
+      <!-- ASSIGNEE SUMMARY -->
+      <div class="card-panel mb-4 p-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="section-label mb-0"><i class="fas fa-users me-1"></i> Jumlah Tugas per Assignee</h6>
+          <button class="btn btn-sm btn-outline-secondary" onclick="loadAssigneeStats()" title="Refresh"><i class="fas fa-sync-alt"></i></button>
+        </div>
+        <div id="assigneeStatsContainer" class="row g-2">
+          <div class="col-12 text-muted text-center py-3">Memuat data assignee...</div>
+        </div>
+      </div>
+
+      <!-- FILTER PANEL -->
+      <div class="filter-panel">
+        <div class="filter-row">
+          <div class="filter-item">
+            <div class="filter-label">Status</div>
+            <select id="filterStatus" class="form-select form-select-sm"></select>
+          </div>
+          <div class="filter-item">
+            <div class="filter-label">Prioritas</div>
+            <select id="filterPriority" class="form-select form-select-sm"></select>
+          </div>
+          <div class="filter-item">
+            <div class="filter-label">Kategori</div>
+            <select id="filterKategori" class="form-select form-select-sm"></select>
+          </div>
+          <div class="filter-item">
+            <div class="filter-label">Assignee</div>
+            <select id="filterAssignee" class="form-select form-select-sm"></select>
+          </div>
+          <div class="filter-item">
+            <div class="filter-label">Creator</div>
+            <select id="filterCreator" class="form-select form-select-sm"></select>
+          </div>
+          <div class="filter-item search-item">
+            <div class="filter-label">Cari</div>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text"><i class="fas fa-search"></i></span>
+              <input type="text" id="searchInput" class="form-control" placeholder="Judul / Deskripsi / Kategori…">
+            </div>
+          </div>
+          <div class="filter-item reset-item">
+            <div class="filter-label d-none d-md-block">&nbsp;</div>
+            <button class="btn-reset" onclick="resetFilters()" title="Reset semua filter">
+              <i class="fas fa-undo-alt"></i> Reset
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TASK TABLE -->
+      <div class="table-panel">
+        <div class="table-responsive">
+          <table class="task-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="checkAll" onchange="toggleAllCheckboxes(this)"></th>
+                <th class="sortable-th" data-sort-key="TASK_ID" onclick="sortTasksBy('TASK_ID')">ID<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th class="sortable-th" data-sort-key="CREATED_AT" onclick="sortTasksBy('CREATED_AT')">Dibuat<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th class="sortable-th" data-sort-key="JUDUL" onclick="sortTasksBy('JUDUL')">Judul &amp; Deskripsi<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th class="sortable-th" data-sort-key="KATEGORI" onclick="sortTasksBy('KATEGORI')">Kategori<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th class="sortable-th" data-sort-key="CREATOR" onclick="sortTasksBy('CREATOR')">Creator<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th class="sortable-th" data-sort-key="ASSIGN_TO" onclick="sortTasksBy('ASSIGN_TO')">Assignee<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th class="sortable-th" data-sort-key="STATUS" onclick="sortTasksBy('STATUS')">Status<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th class="sortable-th" data-sort-key="PRIORITY" onclick="sortTasksBy('PRIORITY')">Prioritas<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th class="sortable-th" data-sort-key="DUE_DATE" onclick="sortTasksBy('DUE_DATE')">Deadline<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th class="sortable-th" data-sort-key="LAST_UPDATE" onclick="sortTasksBy('LAST_UPDATE')">Terakhir Update<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tasksTableBody">
+              <tr><td colspan="12"><div class="empty-state"><i class="fas fa-circle-notch fa-spin"></i><p>Memuat data…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <div class="pagination-info" id="paginationInfo">Menampilkan 0–0 dari 0 tugas</div>
+          <div class="pagination-controls">
+            <button class="page-btn icon-btn" id="firstPageBtn" onclick="goToPage(1)" title="Halaman pertama" disabled><i class="fas fa-angles-left"></i></button>
+            <button class="page-btn icon-btn" id="prevPageBtn" onclick="goToPage(currentPage-1)" title="Sebelumnya" disabled><i class="fas fa-angle-left"></i></button>
+            <div class="page-jump">
+              <input type="number" id="pageJumpInput" class="page-jump-input" min="1" value="1"
+                     onkeydown="if(event.key==='Enter'){ jumpToPage(); event.target.blur(); }"
+                     onblur="jumpToPage()">
+              <span class="page-jump-sep">/</span>
+              <span class="page-jump-total" id="pageTotalIndicator">1</span>
+            </div>
+            <button class="page-btn icon-btn" id="nextPageBtn" onclick="goToPage(currentPage+1)" title="Berikutnya" disabled><i class="fas fa-angle-right"></i></button>
+            <button class="page-btn icon-btn" id="lastPageBtn" onclick="goToPage(totalPages)" title="Halaman terakhir" disabled><i class="fas fa-angles-right"></i></button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-dashboard -->
+
+    <!-- ══════════════════════════════════════
+         PAGE: FOLLOW UP KENDALA
+    ══════════════════════════════════════ -->
+    <div id="page-kendala" class="page-section">
+
+      <!-- TOP BAR -->
+      <div class="topbar">
+        <div class="d-flex align-items-center gap-3">
+          <button class="btn-menu" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+          <div class="topbar-left">
+            <h1>Follow Up <span>Kendala</span></h1>
+            <small id="kendalaLastRefreshed">Memuat data...</small>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn-topbar btn-topbar-outline" onclick="refreshKendalaPage()">
+            <i class="fas fa-sync-alt"></i><span class="d-none d-sm-inline">Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KENDALA STAT CARDS -->
+      <div class="stats-grid" style="grid-template-columns: repeat(auto-fill, minmax(150px,1fr));">
+        <div class="stat-card orange">
+          <div class="stat-icon-wrap"><i class="fas fa-list-ul"></i></div>
+          <div class="stat-label">Total Kendala</div>
+          <div class="stat-value" id="kStatTotal">—</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-icon-wrap"><i class="fas fa-exclamation-circle"></i></div>
+          <div class="stat-label">Open</div>
+          <div class="stat-value" id="kStatOpen">—</div>
+        </div>
+        <div class="stat-card indigo">
+          <div class="stat-icon-wrap"><i class="fas fa-spinner"></i></div>
+          <div class="stat-label">In Progress</div>
+          <div class="stat-value" id="kStatProgress">—</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon-wrap"><i class="fas fa-check-circle"></i></div>
+          <div class="stat-label">Resolved</div>
+          <div class="stat-value" id="kStatResolved">—</div>
+        </div>
+      </div>
+
+      <!-- KENDALA FILTER -->
+      <div class="filter-panel">
+        <div class="row g-2 align-items-end">
+          <div class="col-6 col-sm-4 col-md-2">
+            <div class="filter-label">Status Kendala</div>
+            <select id="kFilterStatus" class="form-select form-select-sm">
+              <option value="">Semua</option>
+              <option value="Open">Open</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+          </div>
+          <div class="col-6 col-sm-4 col-md-3">
+            <div class="filter-label">Penyebab</div>
+            <select id="kFilterPenyebab" class="form-select form-select-sm">
+              <option value="">Semua</option>
+            </select>
+          </div>
+          <div class="col-sm-8 col-md-5">
+            <div class="filter-label">Cari</div>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text"><i class="fas fa-search"></i></span>
+              <input type="text" id="kSearchInput" class="form-control" placeholder="Kendala / Judul Tugas / Penyebab…">
+            </div>
+          </div>
+          <div class="col-sm-4 col-md-2">
+            <div class="filter-label d-none d-md-block">&nbsp;</div>
+            <button class="btn-reset" onclick="resetKendalaFilters()"><i class="fas fa-undo-alt me-1"></i>Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KENDALA TABLE -->
+      <div class="table-panel">
+        <div class="table-responsive">
+          <table class="kendala-table">
+            <thead>
+              <tr>
+                <th style="width:60px">No</th>
+                <th class="sortable-th" style="width:140px" data-sort-key="TASK_ID" onclick="sortKendalaBy('TASK_ID')">Task ID<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th class="sortable-th" style="min-width:180px" data-sort-key="TASK_JUDUL" onclick="sortKendalaBy('TASK_JUDUL')">Judul Tugas<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th class="sortable-th" style="min-width:220px" data-sort-key="KENDALA" onclick="sortKendalaBy('KENDALA')">Kendala<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th class="sortable-th" style="width:140px" data-sort-key="PENYEBAB" onclick="sortKendalaBy('PENYEBAB')">Penyebab<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th class="sortable-th" style="width:100px" data-sort-key="STATUS" onclick="sortKendalaBy('STATUS')">Status<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th class="sortable-th" style="width:160px" data-sort-key="CREATED_AT" onclick="sortKendalaBy('CREATED_AT')">Dibuat<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th class="sortable-th" style="width:120px" data-sort-key="CREATED_BY" onclick="sortKendalaBy('CREATED_BY')">Oleh<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th class="sortable-th" style="width:160px" data-sort-key="LAST_UPDATE" onclick="sortKendalaBy('LAST_UPDATE')">Last Update<span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+                <th style="width:100px;text-align:center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="kendalaTableBody">
+              <tr><td colspan="10"><div class="empty-state"><i class="fas fa-circle-notch fa-spin"></i><p>Memuat data…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <div class="pagination-info" id="kPaginationInfo">Menampilkan 0–0 dari 0 kendala</div>
+          <div class="pagination-controls">
+            <button class="page-btn icon-btn" id="kFirstPageBtn" onclick="goToKendalaPage(1)" title="Halaman pertama" disabled><i class="fas fa-angles-left"></i></button>
+            <button class="page-btn icon-btn" id="kPrevPageBtn" onclick="goToKendalaPage(kCurrentPage-1)" title="Sebelumnya" disabled><i class="fas fa-angle-left"></i></button>
+            <div class="page-jump">
+              <input type="number" id="kPageJumpInput" class="page-jump-input" min="1" value="1"
+                     onkeydown="if(event.key==='Enter'){ jumpToKendalaPage(); event.target.blur(); }"
+                     onblur="jumpToKendalaPage()">
+              <span class="page-jump-sep">/</span>
+              <span class="page-jump-total" id="kPageTotalIndicator">1</span>
+            </div>
+            <button class="page-btn icon-btn" id="kNextPageBtn" onclick="goToKendalaPage(kCurrentPage+1)" title="Berikutnya" disabled><i class="fas fa-angle-right"></i></button>
+            <button class="page-btn icon-btn" id="kLastPageBtn" onclick="goToKendalaPage(kTotalPages)" title="Halaman terakhir" disabled><i class="fas fa-angles-right"></i></button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-kendala -->
+
+  </main>
+</div>
+
+<!-- ══════════ BULK BAR (status bulk-update) — fixed contrast ══════════ -->
+<div id="bulkBar">
+  <span id="bulkCount">0 dipilih</span>
+  <select id="bulkStatus" class="form-select form-select-sm"></select>
+  <div style="display: flex; gap: 0.5rem; align-items: center;">
+    <button class="btn-bulk-apply" onclick="executeBulkUpdate()">Terapkan</button>
+    <button class="btn-bulk-cancel" onclick="clearSelection()">Batal</button>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: ADD / EDIT TASK ══════════ -->
+<div class="modal fade" id="taskModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="taskModalTitle"><i class="fas fa-tasks me-2 text-primary"></i>Tambah Tugas Baru</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="taskForm" onsubmit="return false">
+          <input type="hidden" id="taskId">
+          <div class="row g-3 mb-3">
+            <div class="col-md-8">
+              <label class="form-label">Judul <span class="text-danger">*</span></label>
+              <input type="text" id="judul" class="form-control" placeholder="Nama tugas…" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Kategori</label>
+              <select id="kategori" class="form-select"></select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Deskripsi</label>
+            <textarea id="deskripsi" rows="3" class="form-control" placeholder="Detail tugas…"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Jumlah Data <span class="text-muted" style="font-size:.73rem">(angka)</span></label>
+            <input type="number" id="jumlahData" class="form-control" placeholder="Masukkan jumlah data…" min="1" step="1" value="1">
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Assign To</label>
+              <select id="assignUserSelect" class="form-select" onchange="onAssigneeChange(this)">
+                <option value="">— Pilih user —</option>
+              </select>
+              <input type="hidden" id="assignToName" value="">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Status</label>
+              <select id="status" class="form-select"></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Prioritas</label>
+              <select id="priority" class="form-select"></select>
+            </div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Due Date</label>
+              <input type="date" id="dueDate" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Attachment Link (URL)</label>
+              <input type="url" id="attachmentLink" class="form-control" placeholder="https://…">
+              <div class="form-text mt-1">
+                <label for="fileUpload" class="btn btn-sm btn-outline-secondary mt-1">
+                  <i class="fas fa-cloud-upload-alt"></i> Upload File ke Drive
+                </label>
+                <input type="file" id="fileUpload" style="display:none"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.txt"
+                  onchange="handleFileUpload(this)">
+                <span class="text-muted ms-2" style="font-size:.72rem">Upload file (max 1MB)</span>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="saveTask()"><i class="fas fa-save me-1"></i>Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: TASK DETAIL ══════════ -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="detailModalTitle"><i class="fas fa-info-circle me-2 text-info"></i>Detail Tugas</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="detailContent"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-warning btn-sm" id="detailEditBtn"><i class="fas fa-edit me-1"></i>Edit Tugas</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: DELETE TASK ══════════ -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-body text-center py-4">
+        <div style="width:52px;height:52px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .85rem">
+          <i class="fas fa-trash-alt text-danger"></i>
+        </div>
+        <p style="font-size:.88rem;font-weight:600">Yakin ingin menghapus tugas ini?</p>
+        <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:1rem">Tindakan ini tidak dapat dibatalkan.</p>
+        <div class="d-flex gap-2 justify-content-center">
+          <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+          <button class="btn btn-danger btn-sm" id="confirmDeleteBtn">Hapus</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: KENDALA (from task detail) ══════════ -->
+<div class="modal fade" id="kendalaModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-exclamation-circle me-2 text-warning"></i>Follow Up Kendala</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+
+        <!-- ADD FORM -->
+        <div style="background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:1.25rem;">
+          <h6 style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-soft);font-weight:700;margin-bottom:.75rem">
+            <i class="fas fa-plus me-1"></i>Tambah Kendala Baru
+          </h6>
+          <div class="mb-2">
+            <label class="form-label">Deskripsi Kendala <span class="text-danger">*</span></label>
+            <textarea id="kendalaText" class="form-control form-control-sm" rows="2" placeholder="Jelaskan kendala yang dihadapi…"></textarea>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-md-6">
+              <label class="form-label">Penyebab</label>
+              <select id="kendalaPenyebab" class="form-select form-select-sm">
+                <option value="">— Pilih penyebab —</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Status Kendala</label>
+              <select id="kendalaStatus" class="form-select form-select-sm">
+                <option value="Open">Open</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-warning btn-sm mt-1" onclick="submitKendala()">
+            <i class="fas fa-save me-1"></i>Simpan Kendala
+          </button>
+        </div>
+
+        <!-- LIST -->
+        <h6 style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-soft);font-weight:700;margin-bottom:.65rem">
+          <i class="fas fa-list me-1"></i>Riwayat Kendala
+        </h6>
+        <div id="kendalaListContainer">
+          <div class="text-center text-muted py-3">
+            <div class="spinner-border spinner-border-sm me-2"></div>Memuat kendala…
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: UPDATE STATUS KENDALA ══════════ -->
+<div class="modal fade" id="kendalaStatusModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" style="font-size:.9rem"><i class="fas fa-edit me-2"></i>Update Status Kendala</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="updateKendalaId">
+        <label class="form-label">Status Baru</label>
+        <select id="updateKendalaStatus" class="form-select form-select-sm">
+          <option value="Open">Open</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Resolved">Resolved</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary btn-sm" onclick="confirmUpdateKendalaStatus()">
+          <i class="fas fa-check me-1"></i>Update
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: DELETE KENDALA ══════════ -->
+<div class="modal fade" id="deleteKendalaModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-body text-center py-4">
+        <div style="width:52px;height:52px;background:#fff7ed;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .85rem">
+          <i class="fas fa-trash-alt" style="color:var(--orange)"></i>
+        </div>
+        <p style="font-size:.88rem;font-weight:600">Yakin ingin menghapus kendala ini?</p>
+        <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:1rem">Tindakan ini tidak dapat dibatalkan.</p>
+        <div class="d-flex gap-2 justify-content-center">
+          <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+          <button class="btn btn-danger btn-sm" id="confirmDeleteKendalaBtn">Hapus</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: BULK UPLOAD TASK (UPLOAD MASSAL) ══════════ -->
+<div class="modal fade" id="bulkUploadModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-file-upload me-2 text-success"></i>Upload Massal Tugas</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+
+        <!-- STEP 1: Download template -->
+        <div class="d-flex align-items-start gap-3 mb-3" style="background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;">
+          <div style="width:34px;height:34px;flex-shrink:0;background:#eff6ff;color:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800">1</div>
+          <div class="flex-grow-1">
+            <div style="font-size:.85rem;font-weight:700;margin-bottom:.2rem">Download Template Excel</div>
+            <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:.6rem">Unduh template, isi data tugas sesuai kolom yang tersedia, lalu simpan filenya.</div>
+            <button class="btn-topbar btn-topbar-outline" id="downloadTemplateBtn" onclick="handleDownloadTemplate()">
+              <i class="fas fa-download"></i> Download Template (.xlsx)
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 2: Upload file -->
+        <div class="d-flex align-items-start gap-3 mb-3" style="background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;">
+          <div style="width:34px;height:34px;flex-shrink:0;background:#eff6ff;color:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800">2</div>
+          <div class="flex-grow-1">
+            <div style="font-size:.85rem;font-weight:700;margin-bottom:.2rem">Upload File yang Sudah Diisi</div>
+            <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:.6rem">Kolom wajib: <b>JUDUL</b>, <b>STATUS</b>, <b>PRIORITY</b>. Maksimal 1000 baris per upload.</div>
+
+            <div class="bulk-upload-dropzone" id="bulkDropzone" onclick="document.getElementById('bulkUploadInput').click()">
+              <i class="fas fa-cloud-upload-alt"></i>
+              <div class="dz-title">Klik untuk pilih file, atau drag &amp; drop</div>
+              <div class="dz-sub">Format .xlsx hasil dari template</div>
+            </div>
+            <input type="file" id="bulkUploadInput" accept=".xlsx" style="display:none" onchange="handleBulkFileSelected(this.files[0])">
+
+            <div class="bulk-upload-filename" id="bulkFileNameBox">
+              <i class="fas fa-file-excel"></i>
+              <span id="bulkFileNameText">—</span>
+              <button class="remove-file" onclick="clearBulkFile()" title="Hapus file"><i class="fas fa-times"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3: Result -->
+        <div id="bulkUploadResultBox" style="display:none">
+          <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-soft);font-weight:700;margin-bottom:.65rem">
+            <i class="fas fa-clipboard-check me-1"></i>Hasil Upload
+          </div>
+          <div class="bulk-summary-cards">
+            <div class="bulk-summary-card success">
+              <div class="bulk-summary-num" id="bulkResultSuccess">0</div>
+              <div class="bulk-summary-label">Berhasil</div>
+            </div>
+            <div class="bulk-summary-card fail">
+              <div class="bulk-summary-num" id="bulkResultFail">0</div>
+              <div class="bulk-summary-label">Gagal</div>
+            </div>
+          </div>
+          <div id="bulkErrorList"></div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+        <button type="button" class="btn btn-success btn-sm" id="bulkUploadSubmitBtn" onclick="submitBulkUpload()" disabled>
+          <i class="fas fa-upload me-1"></i>Upload Sekarang
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ═══════════════════════════════════════════
+//  GLOBAL STATE
+// ═══════════════════════════════════════════
+let currentTasks   = [];
+let users          = [];
+let currentUser    = null;
+let selectedIds    = new Set();
+let _loadingTimer  = null;
+const PAGE_SIZE    = 10;
+let currentPage    = 1;
+let totalPages     = 1;
+let totalTasksCount = 0;
+
+// Sorting state (client-side, applied on top of the currently loaded page)
+let taskSortKey  = null;
+let taskSortDir  = 'asc'; // 'asc' | 'desc'
+let kendalaSortKey = null;
+let kendalaSortDir = 'asc';
+let _lastKendalaData = [];
+
+// Kendala page state
+const K_PAGE_SIZE  = 15;
+let kCurrentPage   = 1;
+let kTotalPages    = 1;
+let kTotalCount    = 0;
+
+// Bulk upload state
+let _bulkParsedRows = null;
+let _bulkFile        = null;
+
+let bsTaskModal, bsDetailModal, bsDeleteModal;
+let bsKendalaModal, bsKendalaStatusModal, bsDeleteKendalaModal, bsBulkUploadModal;
+let appConfig = { KATEGORI: [], PRIORITAS: [], STATUS: [], PENYEBAB_KENDALA: [] };
+let _activeKendalaTaskId = null;
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  bsTaskModal          = new bootstrap.Modal(document.getElementById('taskModal'));
+  bsDetailModal        = new bootstrap.Modal(document.getElementById('detailModal'));
+  bsDeleteModal        = new bootstrap.Modal(document.getElementById('deleteModal'));
+  bsKendalaModal       = new bootstrap.Modal(document.getElementById('kendalaModal'));
+  bsKendalaStatusModal = new bootstrap.Modal(document.getElementById('kendalaStatusModal'));
+  bsDeleteKendalaModal = new bootstrap.Modal(document.getElementById('deleteKendalaModal'));
+  bsBulkUploadModal    = new bootstrap.Modal(document.getElementById('bulkUploadModal'));
+
+  initSidebarCollapse();
+
+  await loadConfig();
+  loadCurrentUser();
+  loadUsers();
+  loadStatsAndJumlah();
+  loadKendalaStats();
+
+  // Dashboard filters
+  document.getElementById('filterStatus').addEventListener('change',   () => { currentPage = 1; loadTasks(); onFilterChange(); });
+  document.getElementById('filterPriority').addEventListener('change', () => { currentPage = 1; loadTasks(); onFilterChange(); });
+  document.getElementById('filterKategori').addEventListener('change', () => { currentPage = 1; loadTasks(); onFilterChange(); });
+  document.getElementById('filterAssignee').addEventListener('change', () => { currentPage = 1; loadTasks(); onAssigneeFilterChange(); });
+  document.getElementById('filterCreator').addEventListener('change',  () => { currentPage = 1; loadTasks(); });
+  document.getElementById('searchInput').addEventListener('input', debounce(() => { currentPage = 1; loadTasks(); }, 350));
+
+  // Kendala page filters
+  document.getElementById('kFilterStatus').addEventListener('change',   () => { kCurrentPage = 1; loadKendalaPage(); });
+  document.getElementById('kFilterPenyebab').addEventListener('change', () => { kCurrentPage = 1; loadKendalaPage(); });
+  document.getElementById('kSearchInput').addEventListener('input', debounce(() => { kCurrentPage = 1; loadKendalaPage(); }, 350));
+
+  // Bulk upload drag & drop
+  const dz = document.getElementById('bulkDropzone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleBulkFileSelected(e.dataTransfer.files[0]);
+  });
+});
+
+// ═══════════════════════════════════════════
+//  PAGE NAVIGATION
+// ═══════════════════════════════════════════
+function showPage(page) {
+  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-link-item').forEach(n => n.classList.remove('active'));
+
+  document.getElementById('page-' + page).classList.add('active');
+  const navEl = document.getElementById('nav-' + page);
+  if (navEl) navEl.classList.add('active');
+
+  if (page === 'kendala') {
+    loadKendalaPage();
+    loadKendalaStats();
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════════
+//  SIDEBAR (mobile show/hide overlay)
+// ═══════════════════════════════════════════
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('active');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('active');
+}
+
+// ═══════════════════════════════════════════
+//  SIDEBAR COLLAPSE (desktop show/hide toggle)
+// ═══════════════════════════════════════════
+function initSidebarCollapse() {
+  // Restore last state so it persists across refreshes within the session/browser
+  let collapsed = false;
+  try { collapsed = localStorage.getItem('pm_sidebar_collapsed') === '1'; } catch (e) {}
+  applySidebarCollapse(collapsed);
+}
+
+function toggleSidebarCollapse() {
+  const isCollapsed = document.body.classList.contains('sidebar-collapsed');
+  applySidebarCollapse(!isCollapsed);
+}
+
+function applySidebarCollapse(collapsed) {
+  const sidebar = document.getElementById('sidebar');
+  const btn = document.getElementById('collapseToggle');
+  document.body.classList.toggle('sidebar-collapsed', collapsed);
+  sidebar.classList.toggle('collapsed', collapsed);
+  if (btn) btn.title = collapsed ? 'Tampilkan sidebar' : 'Sembunyikan sidebar';
+  try { localStorage.setItem('pm_sidebar_collapsed', collapsed ? '1' : '0'); } catch (e) {}
+}
+
+// ═══════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function formatDate(val) {
+  if (!val) return '—';
+  const d = new Date(val); if (isNaN(d)) return val;
+  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+function formatDateTime(val) {
+  if (!val) return '—';
+  const d = new Date(val); if (isNaN(d)) return val;
+  return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function isOverdue(task) {
+  if (!task.DUE_DATE) return false;
+  if (task.STATUS === 'Done' || task.STATUS === 'Closed') return false;
+  const due = new Date(task.DUE_DATE); due.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0,0,0,0);
+  return due < today;
+}
+
+// ═══════════════════════════════════════════
+//  NORMALISASI DUE_DATE (Upload Massal / Bulk)
+// ═══════════════════════════════════════════
+// Konversi nilai DUE_DATE dari hasil parsing Excel (bisa berupa objek Date,
+// angka serial Excel, atau string tanggal) menjadi string "yyyy-MM-dd" yang
+// bersih dan aman dikirim ke backend (Apps Script / Code.gs).
+//
+// PENTING — akar masalah "01 Jan 1970" / tanggal terbalik:
+// Saat kolom DUE_DATE di template berformat Text, SheetJS membaca sel
+// sebagai STRING mentah, mis. "11/07/2026" (dd/mm/yyyy = 11 Juli 2026).
+// String ini TIDAK BOLEH diserahkan ke `new Date(string)`, karena native
+// Date constructor JavaScript selalu menebak string bertitik-koma sebagai
+// format Amerika MM/DD/YYYY — sehingga "11/07/2026" salah dibaca sebagai
+// bulan 11 (November), tanggal 07. Fungsi ini mem-parsing string tanggal
+// secara EKSPLISIT (regex, sama seperti logika _parseDueDateSafe di
+// Code.gs) alih-alih menyerahkannya ke new Date() yang ambigu.
+// Untuk objek Date (dari cellDates:true) & serial Excel, komponen diambil
+// dari UTC agar tidak ikut bergeser akibat timezone browser.
+function normalizeDueDate(val) {
+  if (val === null || val === undefined || val === '') return '';
+
+  // Sudah berupa objek Date (jalur normal ketika cellDates:true aktif)
+  // — pakai komponen UTC supaya tanggal tidak bergeser mundur/maju
+  // akibat timezone lokal browser pengguna.
+  if (val instanceof Date && !isNaN(val)) {
+    return _dateToYMDFromUTC(val);
+  }
+
+  // Angka serial Excel (basis 1899-12-30, BUKAN epoch 1970)
+  if (typeof val === 'number' && isFinite(val)) {
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    const d = new Date(excelEpoch.getTime() + val * 86400000);
+    return _dateToYMDFromUTC(d);
+  }
+
+  // String tanggal, mis. "11/07/2026" (dd/mm/yyyy) atau "2026-07-11" (ISO)
+  if (typeof val === 'string') {
+    const s = val.trim();
+    if (!s) return '';
+
+    // Format ISO / yyyy-mm-dd atau yyyy/mm/dd → sudah jelas urutannya
+    let m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+    if (m) {
+      const yyyy = parseInt(m[1], 10), mm = parseInt(m[2], 10), dd = parseInt(m[3], 10);
+      if (_isValidYMD(yyyy, mm, dd)) return _padYMD(yyyy, mm, dd);
+    }
+
+    // Format Indonesia dd/mm/yyyy atau dd-mm-yyyy — di-parsing manual,
+    // BUKAN lewat new Date(), supaya urutan hari/bulan tidak tertukar.
+    m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+    if (m) {
+      const dd = parseInt(m[1], 10), mm = parseInt(m[2], 10), yyyy = parseInt(m[3], 10);
+      if (_isValidYMD(yyyy, mm, dd)) return _padYMD(yyyy, mm, dd);
+    }
+
+    // Format tidak dikenali → jangan kirim sampah ke backend
+    return '';
+  }
+
+  return '';
+}
+
+function _isValidYMD(yyyy, mm, dd) {
+  return mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31 && yyyy >= 1900 && yyyy <= 2999;
+}
+function _padYMD(yyyy, mm, dd) {
+  return `${yyyy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+}
+function _dateToYMD(d) {
+  const yyyy = d.getFullYear();
+  const mm   = String(d.getMonth() + 1).padStart(2, '0');
+  const dd   = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+// Sama seperti _dateToYMD, tapi mengambil komponen UTC — dipakai khusus
+// untuk objek Date hasil parsing SheetJS (cellDates:true) atau konversi
+// serial Excel, agar tanggal tidak bergeser akibat timezone browser lokal.
+function _dateToYMDFromUTC(d) {
+  const yyyy = d.getUTCFullYear();
+  const mm   = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd   = String(d.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+function showLoading(show) {
+  let el = document.getElementById('globalLoading');
+  if (show) {
+    if (el) return;
+    el = document.createElement('div');
+    el.id = 'globalLoading'; el.className = 'loading-overlay';
+    el.innerHTML = `<div class="spinner-box"><div class="spinner-border text-primary mb-3"></div><div class="text-muted small">Memuat data…</div></div>`;
+    document.body.appendChild(el);
+  } else {
+    if (el) el.remove();
+    if (_loadingTimer) { clearTimeout(_loadingTimer); _loadingTimer = null; }
+  }
+}
+function withTimeout(fn, ms = 18000) {
+  showLoading(true);
+  _loadingTimer = setTimeout(() => { showLoading(false); toast('Server tidak merespon, coba refresh.', 'error'); }, ms);
+  fn();
+}
+function toast(msg, type = 'success') {
+  const stack = document.getElementById('toastStack');
+  const el = document.createElement('div');
+  el.className = `toast-item toast-${type}`;
+  const icon = type === 'success' ? 'check-circle' : (type === 'error' ? 'times-circle' : 'info-circle');
+  el.innerHTML = `<i class="fas fa-${icon} me-2"></i>${escapeHtml(msg)}`;
+  stack.appendChild(el);
+  setTimeout(() => el.style.opacity = '0', 3500);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ═══════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════
+function loadConfig() {
+  return new Promise(resolve => {
+    google.script.run
+      .withSuccessHandler(config => {
+        appConfig = config;
+        populateAllDropdowns();
+        resolve();
+      })
+      .withFailureHandler(err => {
+        console.error('Gagal load config', err);
+        appConfig = {
+          KATEGORI: [
+            { value: 'Analisa Data', label: 'Analisa Data', order: 1 },
+            { value: 'Daily Task', label: 'Daily Task', order: 2 },
+            { value: 'FUPD', label: 'FUPD', order: 3 },
+            { value: 'Improvement', label: 'Improvement', order: 4 },
+            { value: 'Master Data', label: 'Master Data', order: 5 },
+            { value: 'Meeting', label: 'Meeting', order: 6 },
+            { value: 'New OP & Customer', label: 'New OP & Customer', order: 7 },
+            { value: 'Penyesuaian Data', label: 'Penyesuaian Data', order: 8 },
+            { value: 'Problem Solving', label: 'Problem Solving', order: 9 },
+            { value: 'Request Data', label: 'Request Data', order: 10 }
+          ],
+          PRIORITAS: [
+            { value: 'Urgent', label: 'Urgent', order: 1 },
+            { value: 'High', label: 'High', order: 2 },
+            { value: 'Medium', label: 'Medium', order: 3 },
+            { value: 'Low', label: 'Low', order: 4 }
+          ],
+          STATUS: [
+            { value: 'To Do', label: 'To Do', order: 1 },
+            { value: 'In Progress', label: 'In Progress', order: 2 },
+            { value: 'Done', label: 'Done', order: 3 },
+            { value: 'Closed', label: 'Closed', order: 4 }
+          ],
+          PENYEBAB_KENDALA: []
+        };
+        populateAllDropdowns();
+        resolve();
+      })
+      .getAppConfig();
+  });
+}
+
+function populateAllDropdowns() {
+  populateSelect('filterKategori', appConfig.KATEGORI, true);
+  populateSelect('filterPriority', appConfig.PRIORITAS, true);
+  populateSelect('filterStatus', appConfig.STATUS, true);
+  populateSelect('kategori', appConfig.KATEGORI, false);
+  populateSelect('priority', appConfig.PRIORITAS, false);
+  populateSelect('status', appConfig.STATUS, false);
+  populateSelect('bulkStatus', appConfig.STATUS, true);
+  populateKendalaPenyebabDropdowns();
+}
+
+function populateSelect(id, items, emptyOption) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  let html = emptyOption ? '<option value="">Semua</option>' : '';
+  (items || []).forEach(item => { html += `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`; });
+  sel.innerHTML = html;
+}
+
+function populateKendalaPenyebabDropdowns() {
+  const items = appConfig.PENYEBAB_KENDALA || [];
+
+  // Modal form penyebab
+  const sel1 = document.getElementById('kendalaPenyebab');
+  if (sel1) {
+    let html = '<option value="">— Pilih penyebab —</option>';
+    items.forEach(item => { html += `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`; });
+    sel1.innerHTML = html;
+  }
+
+  // Kendala page filter penyebab
+  const sel2 = document.getElementById('kFilterPenyebab');
+  if (sel2) {
+    let html = '<option value="">Semua</option>';
+    items.forEach(item => { html += `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`; });
+    sel2.innerHTML = html;
+  }
+}
+
+// ═══════════════════════════════════════════
+//  USERS
+// ═══════════════════════════════════════════
+function loadCurrentUser() {
+  google.script.run
+    .withSuccessHandler(user => {
+      currentUser = user || { USER_ID: null, NAMA_LENGKAP: 'Guest', ROLE: 'viewer' };
+      const name = currentUser.NAMA_LENGKAP || currentUser.EMAIL || 'Guest';
+      document.getElementById('currentUserName').textContent = name;
+      document.getElementById('currentUserRole').textContent = currentUser.ROLE || '';
+      const initials = name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+      document.getElementById('userAvatar').textContent = initials || '?';
+    })
+    .withFailureHandler(() => { currentUser = { USER_ID: null, NAMA_LENGKAP: 'Guest', ROLE: 'viewer' }; })
+    .getCurrentUser();
+}
+
+function loadUsers() {
+  google.script.run
+    .withSuccessHandler(data => {
+      users = data || [];
+      populateAssigneeDropdowns();
+      populateCreatorDropdown();   // tambahan untuk filter creator
+      loadTasks();
+    })
+    .withFailureHandler(err => { console.error(err); toast('Gagal memuat user', 'error'); loadTasks(); })
+    .getUsers();
+}
+
+function populateAssigneeDropdowns() {
+  const filterSel = document.getElementById('filterAssignee');
+  filterSel.innerHTML = '<option value="">Semua</option>';
+  users.forEach(u => { filterSel.innerHTML += `<option value="${escapeHtml(String(u.USER_ID))}">${escapeHtml(u.NAMA_LENGKAP)}</option>`; });
+  const formSel = document.getElementById('assignUserSelect');
+  formSel.innerHTML = '<option value="">— Pilih user —</option>';
+  users.forEach(u => { formSel.innerHTML += `<option value="${escapeHtml(String(u.USER_ID))}" data-name="${escapeHtml(u.NAMA_LENGKAP)}">${escapeHtml(u.NAMA_LENGKAP)}</option>`; });
+}
+
+// Fungsi baru: populate dropdown Creator
+function populateCreatorDropdown() {
+  const sel = document.getElementById('filterCreator');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Semua</option>';
+  users.forEach(u => {
+    sel.innerHTML += `<option value="${escapeHtml(String(u.USER_ID))}">${escapeHtml(u.NAMA_LENGKAP)}</option>`;
+  });
+}
+
+function onAssigneeChange(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('assignToName').value = opt ? (opt.dataset.name || '') : '';
+}
+
+function getCreatorName(userId) {
+  if (!userId) return '—';
+  const found = users.find(u => String(u.USER_ID) === String(userId));
+  return found ? found.NAMA_LENGKAP : `ID:${userId}`;
+}
+
+// ═══════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════
+function onAssigneeFilterChange() {
+  const assigneeId = document.getElementById('filterAssignee').value;
+  const sel = document.getElementById('filterAssignee');
+  const assigneeName = sel.options[sel.selectedIndex]?.text || '';
+  const banner = document.getElementById('assigneeFilterBanner');
+  if (assigneeId) {
+    document.getElementById('bannerAssigneeName').textContent = assigneeName;
+    banner.classList.add('show');
+    document.querySelectorAll('.assignee-chip').forEach(c => {
+      c.classList.toggle('active-filter', c.dataset.assigneeId === assigneeId);
+    });
+  } else {
+    banner.classList.remove('show');
+    document.querySelectorAll('.assignee-chip').forEach(c => c.classList.remove('active-filter'));
+  }
+  loadStatsAndJumlah(assigneeId);
+}
+
+function onFilterChange() {
+  const assigneeId = document.getElementById('filterAssignee').value;
+  loadStatsAndJumlah(assigneeId || null);
+}
+
+function clearAssigneeFilter() {
+  document.getElementById('filterAssignee').value = '';
+  onAssigneeFilterChange();
+  currentPage = 1;
+  loadTasks();
+}
+
+function loadStatsAndJumlah(assigneeId) {
+  if (assigneeId) {
+    google.script.run
+      .withSuccessHandler(stats => {
+        if (stats) {
+          document.getElementById('statTotal').textContent          = stats.total || 0;
+          document.getElementById('statInProgress').textContent     = (stats.byStatus && stats.byStatus['In Progress']) || 0;
+          document.getElementById('statDone').textContent           = (stats.byStatus && stats.byStatus['Done']) || 0;
+          document.getElementById('statOverdue').textContent        = stats.overdue || 0;
+          document.getElementById('statUrgentPriority').textContent = (stats.byPriority && stats.byPriority['Urgent']) || 0;
+          document.getElementById('statToDo').textContent           = (stats.byStatus && stats.byStatus['To Do']) || 0;
+        }
+      })
+      .withFailureHandler(() => loadGlobalStats())
+      .getFilteredStats({ assignee: assigneeId });
+
+    google.script.run
+      .withSuccessHandler(total => { document.getElementById('statTotalJumlahData').textContent = total || 0; })
+      .withFailureHandler(() => { document.getElementById('statTotalJumlahData').textContent = 'Error'; })
+      .getTotalJumlahData(assigneeId);
+  } else {
+    loadGlobalStats();
+    loadGlobalJumlahData();
+  }
+}
+
+function loadGlobalStats() {
+  google.script.run
+    .withSuccessHandler(stats => {
+      if (stats) {
+        document.getElementById('statTotal').textContent          = stats.total || 0;
+        document.getElementById('statInProgress').textContent     = (stats.byStatus && stats.byStatus['In Progress']) || 0;
+        document.getElementById('statDone').textContent           = (stats.byStatus && stats.byStatus['Done']) || 0;
+        document.getElementById('statOverdue').textContent        = stats.overdue || 0;
+        document.getElementById('statUrgentPriority').textContent = (stats.byPriority && stats.byPriority['Urgent']) || 0;
+        document.getElementById('statToDo').textContent           = (stats.byStatus && stats.byStatus['To Do']) || 0;
+      }
+    })
+    .withFailureHandler(e => console.error)
+    .getTaskStats();
+}
+
+function loadGlobalJumlahData() {
+  google.script.run
+    .withSuccessHandler(total => { document.getElementById('statTotalJumlahData').textContent = total || 0; })
+    .withFailureHandler(err => { document.getElementById('statTotalJumlahData').textContent = 'Error'; })
+    .getTotalJumlahData();
+}
+
+function loadKendalaStats() {
+  google.script.run
+    .withSuccessHandler(stats => {
+      if (!stats) return;
+      document.getElementById('statKendalaOpen').textContent = (stats.byStatus && stats.byStatus['Open']) || 0;
+      // Kendala page stats
+      const total = stats.total || 0;
+      const open  = (stats.byStatus && stats.byStatus['Open']) || 0;
+      const prog  = (stats.byStatus && stats.byStatus['In Progress']) || 0;
+      const res   = (stats.byStatus && stats.byStatus['Resolved']) || 0;
+      if (document.getElementById('kStatTotal')) {
+        document.getElementById('kStatTotal').textContent    = total;
+        document.getElementById('kStatOpen').textContent     = open;
+        document.getElementById('kStatProgress').textContent = prog;
+        document.getElementById('kStatResolved').textContent = res;
+      }
+    })
+    .withFailureHandler(() => {})
+    .getKendalaStats();
+}
+
+// ═══════════════════════════════════════════
+//  ASSIGNEE STATS
+// ═══════════════════════════════════════════
+function loadAssigneeStats() {
+  google.script.run
+    .withSuccessHandler(tasks => {
+      const arr = (tasks && tasks.tasks) ? tasks.tasks : (Array.isArray(tasks) ? tasks : []);
+      const map = new Map();
+      arr.forEach(t => { const name = t.ASSIGN_TO || 'Unassigned'; map.set(name, (map.get(name) || 0) + 1); });
+      const data = Array.from(map.entries()).map(([n, c]) => ({ assignee_name: n, count: c })).sort((a, b) => b.count - a.count);
+      displayAssigneeStats(data);
+    })
+    .withFailureHandler(() => {
+      document.getElementById('assigneeStatsContainer').innerHTML = '<div class="col-12 text-danger text-center py-3">Gagal memuat assignee</div>';
+    })
+    .getTasks({}, 1, 9999);
+}
+
+function displayAssigneeStats(data) {
+  const container = document.getElementById('assigneeStatsContainer');
+  if (!data.length) { container.innerHTML = '<div class="col-12 text-muted text-center py-3">Belum ada tugas</div>'; return; }
+  const totalAll = data.reduce((s, o) => s + o.count, 0);
+  const activeFilter = document.getElementById('filterAssignee').value;
+  let html = '';
+  data.forEach(item => {
+    const pct = totalAll > 0 ? ((item.count / totalAll) * 100).toFixed(0) : 0;
+    const userObj = users.find(u => u.NAMA_LENGKAP === item.assignee_name);
+    const uid = userObj ? String(userObj.USER_ID) : '';
+    const isActive = uid && uid === activeFilter;
+    html += `
+      <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+        <div class="assignee-chip${isActive ? ' active-filter' : ''}" data-assignee-id="${escapeHtml(uid)}"
+             onclick="${uid ? `filterByAssignee('${uid}','${escapeHtml(item.assignee_name)}')` : ''}"
+             style="${uid ? 'cursor:pointer' : ''}">
+          <div class="assignee-chip-name" title="${escapeHtml(item.assignee_name)}">${escapeHtml(item.assignee_name)}</div>
+          <div class="assignee-chip-count">${item.count}</div>
+          <div class="assignee-chip-bar"><div class="assignee-chip-fill" style="width:${pct}%"></div></div>
+          <div class="assignee-chip-pct">${pct}%</div>
+        </div>
+      </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function filterByAssignee(uid, name) {
+  document.getElementById('filterAssignee').value = uid;
+  currentPage = 1;
+  loadTasks();
+  onAssigneeFilterChange();
+}
+
+// ═══════════════════════════════════════════
+//  TASKS LOAD & RENDER
+// ═══════════════════════════════════════════
+function loadTasks() {
+  const filters = {
+    status:   document.getElementById('filterStatus').value,
+    priority: document.getElementById('filterPriority').value,
+    kategori: document.getElementById('filterKategori').value,
+    assignee: document.getElementById('filterAssignee').value,
+    creator:  document.getElementById('filterCreator').value,   // tambahan filter creator
+    search:   document.getElementById('searchInput').value.trim()
+  };
+  withTimeout(() => {
+    google.script.run
+      .withSuccessHandler(response => {
+        showLoading(false);
+        if (response && typeof response === 'object' && 'tasks' in response) {
+          currentTasks    = response.tasks || [];
+          totalTasksCount = response.totalCount || 0;
+          totalPages      = response.totalPages || 1;
+          currentPage     = response.currentPage || 1;
+        } else {
+          currentTasks    = response || [];
+          totalTasksCount = currentTasks.length;
+          totalPages      = Math.ceil(totalTasksCount / PAGE_SIZE);
+        }
+        renderTasksTable(getSortedTasks());
+        updatePaginationUI();
+        document.getElementById('lastRefreshed').textContent = 'Diperbarui: ' + new Date().toLocaleTimeString('id-ID');
+        loadAssigneeStats();
+      })
+      .withFailureHandler(err => {
+        showLoading(false);
+        toast('Error: ' + err.message, 'error');
+        renderEmptyTable('Gagal memuat data');
+      })
+      .getTasks(filters, currentPage, PAGE_SIZE);
+  });
+}
+
+// ═══════════════════════════════════════════
+//  SORTING — Task Table (client-side, per halaman yang sedang dimuat)
+// ═══════════════════════════════════════════
+function sortTasksBy(key) {
+  if (taskSortKey === key) {
+    taskSortDir = (taskSortDir === 'asc') ? 'desc' : 'asc';
+  } else {
+    taskSortKey = key;
+    taskSortDir = 'asc';
+  }
+  updateSortIndicators('.task-table', taskSortKey, taskSortDir);
+  renderTasksTable(getSortedTasks());
+}
+
+function getSortedTasks() {
+  const arr = (currentTasks || []).slice();
+  if (!taskSortKey) return arr;
+  const key = taskSortKey;
+  const dir = taskSortDir === 'desc' ? -1 : 1;
+  const isDateKey = (key === 'CREATED_AT' || key === 'DUE_DATE' || key === 'LAST_UPDATE');
+  const isNumKey  = (key === 'TASK_ID');
+  arr.sort((a, b) => {
+    let va, vb;
+    if (key === 'CREATOR') {
+      va = getCreatorName(a.ASSIGN_USER_ID) || '';
+      vb = getCreatorName(b.ASSIGN_USER_ID) || '';
+    } else {
+      va = a[key];
+      vb = b[key];
+    }
+    if (va === undefined || va === null) va = '';
+    if (vb === undefined || vb === null) vb = '';
+
+    if (isNumKey) {
+      const na = parseFloat(va), nb = parseFloat(vb);
+      const cmp = (isNaN(na) ? 0 : na) - (isNaN(nb) ? 0 : nb);
+      return cmp * dir;
+    }
+    if (isDateKey) {
+      const da = va ? new Date(va).getTime() : 0;
+      const db = vb ? new Date(vb).getTime() : 0;
+      return (da - db) * dir;
+    }
+    return String(va).localeCompare(String(vb), 'id', { sensitivity: 'base', numeric: true }) * dir;
+  });
+  return arr;
+}
+
+function updateSortIndicators(tableSelector, activeKey, dir) {
+  document.querySelectorAll(tableSelector + ' thead .sortable-th').forEach(th => {
+    const icon = th.querySelector('.sort-icon i');
+    if (th.dataset.sortKey === activeKey) {
+      th.classList.add('sort-active');
+      if (icon) icon.className = dir === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+    } else {
+      th.classList.remove('sort-active');
+      if (icon) icon.className = 'fas fa-sort';
+    }
+  });
+}
+
+function renderEmptyTable(msg) {
+  document.getElementById('tasksTableBody').innerHTML =
+    `<tr><td colspan="12"><div class="empty-state"><i class="fas fa-inbox"></i><p>${escapeHtml(msg)}</p></div></td></tr>`;
+  updatePaginationUI();
+}
+
+function renderTasksTable(tasks) {
+  clearSelection();
+  const tbody = document.getElementById('tasksTableBody');
+  if (!tasks || !tasks.length) { renderEmptyTable('Tidak ada tugas yang cocok'); return; }
+
+  tbody.innerHTML = tasks.map(task => {
+    const statusCls = { 'To Do': 's-todo', 'In Progress': 's-progress', 'Done': 's-done', 'Closed': 's-closed' }[task.STATUS] || 's-todo';
+    const priCls    = { 'Urgent': 'p-urgent', 'High': 'p-high', 'Medium': 'p-medium', 'Low': 'p-low' }[task.PRIORITY] || 'p-low';
+    const overdue   = isOverdue(task);
+    const shortDesc = (task.DESKRIPSI || '').substring(0, 70) + ((task.DESKRIPSI || '').length > 70 ? '…' : '');
+    const kendalaTag = task.HAS_KENDALA ? `<span class="badge-kendala"><i class="fas fa-exclamation-circle me-1"></i>Kendala</span>` : '';
+    const tid = escapeHtml(String(task.TASK_ID));
+    const creatorName = getCreatorName(task.ASSIGN_USER_ID);
+
+    return `<tr class="${overdue ? 'overdue-row' : ''}">
+      <td><input type="checkbox" class="task-check" value="${tid}" onchange="onCheckboxChange(this)"></td>
+      <td><span class="task-id">#${tid}</span></td>
+      <td><span style="font-size:.72rem;color:var(--text-soft);white-space:nowrap">${formatDateTime(task.CREATED_AT)}</span></td>
+      <td>
+        <span class="task-title" title="${escapeHtml(task.JUDUL)}">${escapeHtml(task.JUDUL)}${overdue ? ' <span class="overdue-badge"><i class="fas fa-exclamation-triangle"></i> Terlambat</span>' : ''}${kendalaTag}</span>
+        ${shortDesc ? `<span class="task-desc" title="${escapeHtml(task.DESKRIPSI)}">${escapeHtml(shortDesc)}</span>` : ''}
+       </td>
+      <td><span class="badge-kategori">${escapeHtml(task.KATEGORI || '—')}</span></td>
+      <td><span style="font-size:.78rem">${escapeHtml(creatorName)}</span></td>
+      <td><span style="font-size:.78rem;font-weight:600">${escapeHtml(task.ASSIGN_TO || '—')}</span></td>
+      <td><span class="badge-status ${statusCls}">${escapeHtml(task.STATUS)}</span></td>
+      <td><span class="badge-priority ${priCls}">${escapeHtml(task.PRIORITY)}</span></td>
+      <td class="${overdue ? 'text-danger fw-bold' : ''}" style="font-size:.78rem;white-space:nowrap">${formatDate(task.DUE_DATE)}</td>
+      <td style="font-size:.72rem;color:var(--text-soft);white-space:nowrap">${formatDateTime(task.LAST_UPDATE)}</td>
+      <td>
+        <div class="table-actions">
+          <button class="btn-action view"    title="Detail"  onclick="viewTaskDetail('${tid}')" ><i class="fas fa-eye"></i></button>
+          <button class="btn-action edit"    title="Edit"    onclick="editTask('${tid}')"        ><i class="fas fa-edit"></i></button>
+          <button class="btn-action kendala" title="Kendala" onclick="openKendalaModal('${tid}')"><i class="fas fa-exclamation-circle"></i></button>
+          <button class="btn-action delete"  title="Hapus"   onclick="deleteTaskConfirm('${tid}')"><i class="fas fa-trash"></i></button>
+        </div>
+       </td>
+     </tr>`;
+  }).join('');
+}
+
+function goToPage(page) {
+  if (!page || isNaN(page)) return;
+  page = Math.max(1, Math.min(totalPages, page));
+  if (page === currentPage) { syncPageJumpInput(); return; }
+  currentPage = page; loadTasks();
+}
+function jumpToPage() {
+  const input = document.getElementById('pageJumpInput');
+  const val = parseInt(input.value, 10);
+  if (isNaN(val)) { syncPageJumpInput(); return; }
+  goToPage(val);
+}
+function syncPageJumpInput() {
+  const input = document.getElementById('pageJumpInput');
+  if (input) input.value = currentPage;
+}
+function updatePaginationUI() {
+  const start = (currentPage - 1) * PAGE_SIZE + 1;
+  const end   = Math.min(currentPage * PAGE_SIZE, totalTasksCount);
+  document.getElementById('paginationInfo').textContent  = totalTasksCount > 0 ? `Menampilkan ${start}–${end} dari ${totalTasksCount} tugas` : 'Tidak ada tugas';
+  document.getElementById('pageTotalIndicator').textContent = totalPages;
+  const jumpInput = document.getElementById('pageJumpInput');
+  jumpInput.max = totalPages;
+  jumpInput.value = currentPage;
+  document.getElementById('firstPageBtn').disabled       = currentPage <= 1;
+  document.getElementById('prevPageBtn').disabled        = currentPage <= 1;
+  document.getElementById('nextPageBtn').disabled        = currentPage >= totalPages;
+  document.getElementById('lastPageBtn').disabled        = currentPage >= totalPages;
+}
+
+// ═══════════════════════════════════════════
+//  CHECKBOX & BULK STATUS UPDATE
+// ═══════════════════════════════════════════
+function toggleAllCheckboxes(master) {
+  document.querySelectorAll('.task-check').forEach(cb => {
+    cb.checked = master.checked;
+    master.checked ? selectedIds.add(String(cb.value)) : selectedIds.delete(String(cb.value));
+  });
+  updateBulkBar();
+}
+function onCheckboxChange(cb) {
+  cb.checked ? selectedIds.add(String(cb.value)) : selectedIds.delete(String(cb.value));
+  const all = document.querySelectorAll('.task-check');
+  document.getElementById('checkAll').checked = selectedIds.size === all.length && all.length > 0;
+  updateBulkBar();
+}
+function updateBulkBar() {
+  const bar = document.getElementById('bulkBar');
+  if (selectedIds.size > 0) { bar.classList.add('visible'); document.getElementById('bulkCount').textContent = selectedIds.size + ' dipilih'; }
+  else bar.classList.remove('visible');
+}
+function clearSelection() {
+  selectedIds.clear();
+  document.querySelectorAll('.task-check').forEach(cb => cb.checked = false);
+  const ca = document.getElementById('checkAll'); if (ca) ca.checked = false;
+  updateBulkBar();
+}
+function executeBulkUpdate() {
+  const newStatus = document.getElementById('bulkStatus').value;
+  if (!newStatus) { toast('Pilih status', 'info'); return; }
+  if (!selectedIds.size) return;
+  showLoading(true);
+  google.script.run
+    .withSuccessHandler(result => {
+      showLoading(false);
+      if (result.success) {
+        toast(`${result.updated} tugas diperbarui`, 'success');
+        clearSelection(); currentPage = 1; loadTasks();
+        loadStatsAndJumlah(document.getElementById('filterAssignee').value || null);
+      } else toast(result.message || 'Gagal', 'error');
+    })
+    .withFailureHandler(() => { showLoading(false); toast('Error bulk', 'error'); })
+    .bulkUpdateStatus(Array.from(selectedIds), newStatus);
+}
+
+// ═══════════════════════════════════════════
+//  ADD / EDIT TASK
+// ═══════════════════════════════════════════
+function showAddTaskModal() {
+  document.getElementById('taskModalTitle').innerHTML = '<i class="fas fa-plus-circle me-2 text-primary"></i>Tambah Tugas Baru';
+  document.getElementById('taskForm').reset();
+  document.getElementById('taskId').value = '';
+  document.getElementById('assignUserSelect').value = '';
+  document.getElementById('assignToName').value = '';
+  document.getElementById('jumlahData').value = '1';
+  document.getElementById('fileUpload').value = '';
+  const defaultDue = new Date(); defaultDue.setDate(defaultDue.getDate() + 3);
+  const yyyy = defaultDue.getFullYear();
+  const mm   = String(defaultDue.getMonth() + 1).padStart(2, '0');
+  const dd   = String(defaultDue.getDate()).padStart(2, '0');
+  document.getElementById('dueDate').value = `${yyyy}-${mm}-${dd}`;
+  bsTaskModal.show();
+}
+
+function editTask(taskId) {
+  const task = currentTasks.find(t => String(t.TASK_ID) === String(taskId));
+  if (!task) { toast('Task tidak ditemukan', 'error'); return; }
+  document.getElementById('taskModalTitle').innerHTML = '<i class="fas fa-edit me-2 text-warning"></i>Edit Tugas';
+  document.getElementById('taskId').value    = task.TASK_ID;
+  document.getElementById('judul').value     = task.JUDUL || '';
+  document.getElementById('kategori').value  = task.KATEGORI || '';
+  document.getElementById('deskripsi').value = task.DESKRIPSI || '';
+  document.getElementById('jumlahData').value = (task.JUMLAH_DATA != null) ? task.JUMLAH_DATA : '1';
+  document.getElementById('status').value    = task.STATUS || '';
+  document.getElementById('priority').value  = task.PRIORITY || '';
+  document.getElementById('dueDate').value   = task.DUE_DATE ? task.DUE_DATE.split('T')[0] : '';
+  document.getElementById('attachmentLink').value = task.ATTACHMENT_LINK || '';
+  document.getElementById('fileUpload').value = '';
+  const sel = document.getElementById('assignUserSelect');
+  const assigneeName = task.ASSIGN_TO || '';
+  let found = false;
+  for (let i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].dataset.name === assigneeName) {
+      sel.value = sel.options[i].value;
+      document.getElementById('assignToName').value = assigneeName;
+      found = true; break;
+    }
+  }
+  if (!found) { sel.value = ''; document.getElementById('assignToName').value = assigneeName; }
+  bsDetailModal.hide();
+  bsTaskModal.show();
+}
+
+function saveTask() {
+  const judul = document.getElementById('judul').value.trim();
+  if (!judul) { toast('Judul harus diisi', 'error'); return; }
+  let jumlahData = parseInt(document.getElementById('jumlahData').value, 10);
+  if (isNaN(jumlahData) || jumlahData < 1) jumlahData = 1;
+  const taskData = {
+    JUDUL:           judul,
+    KATEGORI:        document.getElementById('kategori').value,
+    DESKRIPSI:       document.getElementById('deskripsi').value.trim(),
+    JUMLAH_DATA:     jumlahData,
+    ASSIGN_TO:       document.getElementById('assignToName').value.trim(),
+    STATUS:          document.getElementById('status').value,
+    PRIORITY:        document.getElementById('priority').value,
+    DUE_DATE:        document.getElementById('dueDate').value,
+    ATTACHMENT_LINK: document.getElementById('attachmentLink').value.trim()
+  };
+  const taskId = document.getElementById('taskId').value;
+  showLoading(true);
+  const onSuccess = result => {
+    showLoading(false);
+    if (result.success) {
+      bsTaskModal.hide();
+      toast(taskId ? 'Tugas diperbarui' : 'Tugas ditambahkan', 'success');
+      currentPage = 1; loadTasks();
+      loadStatsAndJumlah(document.getElementById('filterAssignee').value || null);
+    } else toast(result.message || 'Gagal menyimpan', 'error');
+  };
+  const onFail = err => { showLoading(false); toast('Error: ' + err.message, 'error'); };
+  if (taskId) google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFail).updateTask(taskId, taskData);
+  else        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFail).addTask(taskData);
+}
+
+// ═══════════════════════════════════════════
+//  DELETE TASK
+// ═══════════════════════════════════════════
+function deleteTaskConfirm(taskId) {
+  const btn = document.getElementById('confirmDeleteBtn');
+  const newBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(newBtn, btn);
+  newBtn.addEventListener('click', () => {
+    bsDeleteModal.hide();
+    showLoading(true);
+    google.script.run
+      .withSuccessHandler(result => {
+        showLoading(false);
+        if (result.success) {
+          toast('Tugas dihapus', 'success');
+          currentPage = 1; loadTasks();
+          loadStatsAndJumlah(document.getElementById('filterAssignee').value || null);
+        } else toast(result.message || 'Gagal', 'error');
+      })
+      .withFailureHandler(err => { showLoading(false); toast('Error: ' + err.message, 'error'); })
+      .deleteTask(taskId);
+  });
+  bsDeleteModal.show();
+}
+
+// ═══════════════════════════════════════════
+//  TASK DETAIL & COMMENTS
+// ═══════════════════════════════════════════
+let _activeDetailTaskId = null;
+
+function viewTaskDetail(taskId) {
+  const task = currentTasks.find(t => String(t.TASK_ID) === String(taskId));
+  if (!task) return;
+  _activeDetailTaskId = taskId;
+  document.getElementById('detailEditBtn').onclick = () => editTask(taskId);
+  document.getElementById('detailModalTitle').innerHTML =
+    `<i class="fas fa-info-circle me-2 text-info"></i>Detail Tugas — <span class="text-muted" style="font-size:.8rem">#${taskId}</span>`;
+  renderDetailSkeleton(task);
+  bsDetailModal.show();
+  loadComments(taskId, false);
+}
+
+function renderDetailSkeleton(task) {
+  const statusCls = { 'To Do': 's-todo', 'In Progress': 's-progress', 'Done': 's-done', 'Closed': 's-closed' }[task.STATUS] || 's-todo';
+  const priCls    = { 'Urgent': 'p-urgent', 'High': 'p-high', 'Medium': 'p-medium', 'Low': 'p-low' }[task.PRIORITY] || 'p-low';
+  const attLink   = task.ATTACHMENT_LINK
+    ? `<a href="${escapeHtml(task.ATTACHMENT_LINK)}" target="_blank" class="btn btn-outline-info btn-sm"><i class="fas fa-paperclip me-1"></i>Buka Lampiran</a>`
+    : '—';
+  const tid = escapeHtml(String(task.TASK_ID));
+  const creatorName = getCreatorName(task.ASSIGN_USER_ID);
+
+  document.getElementById('detailContent').innerHTML = `
+    <div class="row g-4">
+      <div class="col-md-5">
+        <h6 style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-soft);font-weight:700;margin-bottom:.75rem">Informasi Tugas</h6>
+        <table class="table table-sm detail-table">
+          <tr><th>ID</th><td><span class="task-id">#${tid}</span></td></tr>
+          <tr><th>Dibuat</th><td>${formatDateTime(task.CREATED_AT)}</td></tr>
+          <tr><th>Judul</th><td><strong>${escapeHtml(task.JUDUL)}</strong></td></tr>
+          <tr><th>Kategori</th><td>${escapeHtml(task.KATEGORI || '—')}</td></tr>
+          <tr><th>Deskripsi</th><td style="white-space:pre-wrap">${escapeHtml(task.DESKRIPSI || '—')}</td></tr>
+          <tr><th>Jumlah Data</th><td><span style="background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:12px;font-size:.75rem;font-weight:700">${task.JUMLAH_DATA ?? 1}</span></td></tr>
+          <tr><th>Creator</th><td>${escapeHtml(creatorName)}</td></tr>
+          <tr><th>Assignee</th><td>${escapeHtml(task.ASSIGN_TO || '—')}</td></tr>
+          <tr><th>Status</th><td><span class="badge-status ${statusCls}">${task.STATUS}</span></td></tr>
+          <tr><th>Prioritas</th><td><span class="badge-priority ${priCls}">${task.PRIORITY}</span></td></tr>
+          <tr><th>Due Date</th><td class="${isOverdue(task) ? 'text-danger fw-bold' : ''}">${formatDate(task.DUE_DATE)}${isOverdue(task) ? ' <small>(Terlambat)</small>' : ''}</td></tr>
+          <tr><th>Last Update</th><td>${formatDateTime(task.LAST_UPDATE)}</td></tr>
+          <tr><th>Lampiran</th><td>${attLink}</td></tr>
+         </table>
+      </div>
+      <div class="col-md-7">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-soft);font-weight:700;margin:0">Komentar</h6>
+          <div class="d-flex gap-2">
+            <button class="btn btn-warning btn-sm" onclick="openKendalaModal('${tid}')">
+              <i class="fas fa-exclamation-circle me-1"></i>Kendala
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="toggleAddCommentForm('${tid}')">
+              <i class="fas fa-comment me-1"></i>Tambah
+            </button>
+          </div>
+        </div>
+        <div id="addCommentForm" class="reply-area mb-3">
+          <textarea id="newCommentText" class="form-control form-control-sm mb-2" rows="3" placeholder="Tulis komentar…"></textarea>
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary btn-sm" onclick="submitComment('${tid}', null)">Kirim</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="toggleAddCommentForm('${tid}')">Batal</button>
+          </div>
+        </div>
+        <div id="commentsContainer">
+          <div class="text-muted text-center py-3"><div class="spinner-border spinner-border-sm me-2"></div>Memuat komentar…</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function toggleAddCommentForm(taskId) {
+  const form = document.getElementById('addCommentForm');
+  if (!form) return;
+  const hidden = form.style.display !== 'block';
+  form.style.display = hidden ? 'block' : 'none';
+  if (hidden) document.getElementById('newCommentText')?.focus();
+}
+
+function loadComments(taskId, focusComment) {
+  const cleanId = String(taskId).trim();
+  google.script.run
+    .withSuccessHandler(comments => {
+      renderComments(comments || [], cleanId);
+      if (focusComment) document.getElementById('newCommentText')?.focus();
+    })
+    .withFailureHandler(() => {
+      const c = document.getElementById('commentsContainer');
+      if (c) c.innerHTML = '<div class="text-danger small">Gagal memuat komentar</div>';
+    })
+    .getComments(cleanId);
+}
+
+function renderComments(comments, taskId) {
+  const container = document.getElementById('commentsContainer');
+  if (!container) return;
+  if (!comments.length) { container.innerHTML = '<p class="text-muted small">Belum ada komentar.</p>'; return; }
+  const topLevel = comments.filter(c => !c.PARENT_COMMENT_ID);
+  const byParent = {};
+  comments.forEach(c => { if (c.PARENT_COMMENT_ID) { byParent[c.PARENT_COMMENT_ID] = byParent[c.PARENT_COMMENT_ID] || []; byParent[c.PARENT_COMMENT_ID].push(c); } });
+  function buildHtml(c) {
+    const ts = c.TIMESTAMP ? new Date(c.TIMESTAMP).toLocaleString('id-ID') : '';
+    const replies = (byParent[c.COMMENT_ID] || []).map(r => buildHtml(r)).join('');
+    const rfId = `replyForm_${c.COMMENT_ID}`;
+    return `<div class="comment-item">
+      <div class="d-flex justify-content-between mb-1">
+        <span class="comment-author">${escapeHtml(c.USER_NAME)}</span>
+        <span class="comment-meta">${escapeHtml(ts)}</span>
+      </div>
+      <div class="my-1 small">${escapeHtml(c.COMMENT)}</div>
+      <button class="btn btn-link btn-sm p-0 text-muted" style="font-size:.73rem" onclick="toggleReplyForm('${rfId}')"><i class="fas fa-reply me-1"></i>Balas</button>
+      <div id="${rfId}" class="reply-area mt-2">
+        <textarea class="form-control form-control-sm mb-2" rows="2" placeholder="Tulis balasan…"></textarea>
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary btn-sm" onclick="submitReply('${taskId}','${c.COMMENT_ID}','${rfId}')">Kirim</button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="toggleReplyForm('${rfId}')">Batal</button>
+        </div>
+      </div>
+      ${replies ? `<div class="comment-thread">${replies}</div>` : ''}
+    </div>`;
+  }
+  container.innerHTML = topLevel.map(c => buildHtml(c)).join('');
+}
+
+function toggleReplyForm(formId) {
+  const el = document.getElementById(formId);
+  if (!el) return;
+  const hidden = el.style.display !== 'block';
+  el.style.display = hidden ? 'block' : 'none';
+  if (hidden) el.querySelector('textarea').focus();
+}
+
+function submitComment(taskId, parentId) {
+  const textarea = document.getElementById('newCommentText');
+  if (!textarea) return;
+  const text = textarea.value.trim();
+  if (!text) { toast('Komentar tidak boleh kosong', 'error'); return; }
+  if (!currentUser || !currentUser.USER_ID) { toast('User tidak dikenali, silakan refresh halaman', 'error'); return; }
+  const cleanId = String(taskId).trim();
+  showLoading(true);
+  google.script.run
+    .withSuccessHandler(result => {
+      showLoading(false);
+      if (result.success) {
+        textarea.value = '';
+        document.getElementById('addCommentForm').style.display = 'none';
+        toast('Komentar ditambahkan', 'success');
+        loadComments(cleanId, false);
+      } else toast(result.message || 'Gagal menambah komentar', 'error');
+    })
+    .withFailureHandler(err => { showLoading(false); toast('Error: ' + err.message, 'error'); })
+    .addComment({ TASK_ID: cleanId, USER_ID: String(currentUser.USER_ID).trim(), COMMENT: text, PARENT_COMMENT_ID: parentId || null });
+}
+
+function submitReply(taskId, parentId, formId) {
+  const form = document.getElementById(formId);
+  if (!form) return;
+  const textarea = form.querySelector('textarea');
+  const text = textarea?.value.trim();
+  if (!text) { toast('Balasan tidak boleh kosong', 'error'); return; }
+  if (!currentUser || !currentUser.USER_ID) { toast('User tidak dikenali', 'error'); return; }
+  const cleanId = String(taskId).trim();
+  showLoading(true);
+  google.script.run
+    .withSuccessHandler(result => {
+      showLoading(false);
+      if (result.success) {
+        textarea.value = ''; form.style.display = 'none';
+        toast('Balasan ditambahkan', 'success');
+        loadComments(cleanId, false);
+      } else toast(result.message || 'Gagal membalas', 'error');
+    })
+    .withFailureHandler(err => { showLoading(false); toast('Error: ' + err.message, 'error'); })
+    .addComment({ TASK_ID: cleanId, USER_ID: String(currentUser.USER_ID).trim(), COMMENT: text, PARENT_COMMENT_ID: parentId });
+}
+
+// ═══════════════════════════════════════════
+//  FILE UPLOAD (attachment task)
+// ═══════════════════════════════════════════
+function handleFileUpload(fileInput) {
+  if (!fileInput.files.length) return;
+  const file = fileInput.files[0];
+  if (file.size > 1 * 1024 * 1024) { toast('Maksimal 1 MB', 'error'); fileInput.value = ''; return; }
+  showLoading(true);
+  const reader = new FileReader();
+  reader.onload = e => {
+    google.script.run
+      .withSuccessHandler(result => {
+        showLoading(false);
+        if (result.success) { document.getElementById('attachmentLink').value = result.url; toast('File terupload ke Drive', 'success'); fileInput.value = ''; }
+        else toast('Upload gagal: ' + result.error, 'error');
+      })
+      .withFailureHandler(() => { showLoading(false); toast('Error upload', 'error'); })
+      .uploadFileToDrive({ fileName: file.name, mimeType: file.type, data: e.target.result });
+  };
+  reader.onerror = () => { showLoading(false); toast('Gagal baca file', 'error'); };
+  reader.readAsDataURL(file);
+}
+
+// ═══════════════════════════════════════════
+//  BULK UPLOAD TASK (UPLOAD MASSAL)
+// ═══════════════════════════════════════════
+function showBulkUploadModal() {
+  clearBulkFile();
+  document.getElementById('bulkUploadResultBox').style.display = 'none';
+  bsBulkUploadModal.show();
+}
+
+function handleDownloadTemplate() {
+  const btn = document.getElementById('downloadTemplateBtn');
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyiapkan…';
+
+  google.script.run
+    .withSuccessHandler(res => {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+      if (!res || !res.success) { toast((res && res.message) || 'Gagal membuat template', 'error'); return; }
+      try {
+        const byteChars = atob(res.base64);
+        const byteNums = new Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([new Uint8Array(byteNums)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = res.filename || 'Template_Bulk_Task.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        toast('Template berhasil diunduh', 'success');
+      } catch (e) {
+        toast('Gagal memproses file template', 'error');
+      }
+    })
+    .withFailureHandler(err => {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+      toast('Error: ' + err.message, 'error');
+    })
+    .downloadTaskTemplate();
+}
+
+function handleBulkFileSelected(file) {
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith('.xlsx')) { toast('File harus berformat .xlsx', 'error'); return; }
+
+  _bulkFile = file;
+  document.getElementById('bulkFileNameText').textContent = file.name;
+  document.getElementById('bulkFileNameBox').classList.add('show');
+  document.getElementById('bulkUploadResultBox').style.display = 'none';
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      // cellDates:true wajib diaktifkan agar kolom tanggal (DUE_DATE) dibaca
+      // SheetJS sebagai objek Date asli, bukan angka serial Excel mentah.
+      // Tanpa ini, angka serial (mis. 46031) bisa lolos ke backend dan
+      // di-interpretasikan sebagai milidetik sejak epoch → muncul "01 Jan 1970".
+      const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+      // Normalisasi DUE_DATE untuk tiap baris — lihat komentar lengkap di
+      // fungsi normalizeDueDate() mengenai bug format Amerika MM/DD/YYYY.
+      rows.forEach(r => {
+        r.DUE_DATE = normalizeDueDate(r.DUE_DATE);
+      });
+
+      _bulkParsedRows = rows;
+      const submitBtn = document.getElementById('bulkUploadSubmitBtn');
+      if (!rows.length) {
+        toast('File kosong atau tidak ada data', 'error');
+        submitBtn.disabled = true;
+      } else {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i class="fas fa-upload me-1"></i>Upload ${rows.length} Tugas`;
+      }
+    } catch (err) {
+      toast('Gagal membaca file: format tidak sesuai template', 'error');
+      clearBulkFile();
+    }
+  };
+  reader.onerror = () => { toast('Gagal membaca file', 'error'); clearBulkFile(); };
+  reader.readAsArrayBuffer(file);
+}
+
+function clearBulkFile() {
+  _bulkFile = null;
+  _bulkParsedRows = null;
+  document.getElementById('bulkUploadInput').value = '';
+  document.getElementById('bulkFileNameBox').classList.remove('show');
+  document.getElementById('bulkFileNameText').textContent = '—';
+  const submitBtn = document.getElementById('bulkUploadSubmitBtn');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fas fa-upload me-1"></i>Upload Sekarang';
+}
+
+function submitBulkUpload() {
+  if (!_bulkParsedRows || !_bulkParsedRows.length) { toast('Pilih file terlebih dahulu', 'info'); return; }
+
+  const submitBtn = document.getElementById('bulkUploadSubmitBtn');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Mengupload…';
+  showLoading(true);
+
+  google.script.run
+    .withSuccessHandler(res => {
+      showLoading(false);
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-upload me-1"></i>Upload Sekarang';
+
+      if (!res || !res.success) {
+        toast((res && res.message) || 'Upload gagal', 'error');
+        return;
+      }
+
+      document.getElementById('bulkResultSuccess').textContent = res.added || 0;
+      document.getElementById('bulkResultFail').textContent    = res.failed || 0;
+
+      const errList = document.getElementById('bulkErrorList');
+      if (res.errors && res.errors.length) {
+        errList.innerHTML = res.errors.map(er =>
+          `<div class="bulk-error-item"><b>Baris ${er.row}</b> (${escapeHtml(er.judul)}): ${escapeHtml(er.message)}</div>`
+        ).join('');
+      } else {
+        errList.innerHTML = '';
+      }
+
+      document.getElementById('bulkUploadResultBox').style.display = 'block';
+
+      if (res.added > 0) {
+        toast(`${res.added} tugas berhasil ditambahkan${res.failed ? `, ${res.failed} gagal` : ''}`, res.failed ? 'info' : 'success');
+        currentPage = 1;
+        loadTasks();
+        loadStatsAndJumlah(document.getElementById('filterAssignee').value || null);
+        loadKendalaStats();
+      } else {
+        toast('Tidak ada tugas yang berhasil ditambahkan', 'error');
+      }
+
+      clearBulkFile();
+    })
+    .withFailureHandler(err => {
+      showLoading(false);
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-upload me-1"></i>Upload Sekarang';
+      toast('Error: ' + err.message, 'error');
+    })
+    .bulkAddTasks(_bulkParsedRows);
+}
+
+// ═══════════════════════════════════════════
+//  RESET & REFRESH
+// ═══════════════════════════════════════════
+function resetFilters() {
+  ['filterStatus','filterPriority','filterKategori','filterAssignee','filterCreator'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('searchInput').value = '';
+  document.getElementById('assigneeFilterBanner').classList.remove('show');
+  document.querySelectorAll('.assignee-chip').forEach(c => c.classList.remove('active-filter'));
+  currentPage = 1;
+  loadTasks();
+  loadStatsAndJumlah(null);
+}
+
+function refreshAll() {
+  const assigneeId = document.getElementById('filterAssignee').value;
+  currentPage = 1;
+  loadTasks();
+  loadStatsAndJumlah(assigneeId || null);
+  loadAssigneeStats();
+  loadKendalaStats();
+  toast('Data diperbarui', 'info');
+}
+
+// ═══════════════════════════════════════════
+//  ══════════ FOLLOW UP KENDALA ══════════
+// ═══════════════════════════════════════════
+
+// ── KENDALA MODAL (from task row / detail) ──────────────────
+function openKendalaModal(taskId) {
+  _activeKendalaTaskId = String(taskId).trim();
+  document.getElementById('kendalaText').value      = '';
+  document.getElementById('kendalaPenyebab').value  = '';
+  document.getElementById('kendalaStatus').value    = 'Open';
+  populateKendalaPenyebabDropdowns();
+  bsKendalaModal.show();
+  loadKendalaList(_activeKendalaTaskId);
+}
+
+function loadKendalaList(taskId) {
+  const container = document.getElementById('kendalaListContainer');
+  container.innerHTML = '<div class="text-center text-muted py-3"><div class="spinner-border spinner-border-sm me-2"></div>Memuat kendala…</div>';
+  google.script.run
+    .withSuccessHandler(data => renderKendalaList(data || []))
+    .withFailureHandler(() => {
+      container.innerHTML = '<div class="text-danger small text-center py-2">Gagal memuat data kendala.</div>';
+    })
+    .getKendala(taskId);
+}
+
+function renderKendalaList(data) {
+  const container = document.getElementById('kendalaListContainer');
+  if (!data.length) { container.innerHTML = '<p class="text-muted small text-center py-2">Belum ada kendala tercatat.</p>'; return; }
+
+  container.innerHTML = data.map(k => {
+    const statusCls = { 'Open': 'ks-open', 'In Progress': 'ks-progress', 'Resolved': 'ks-resolved' }[k.STATUS] || 'ks-open';
+    const borderCls = { 'Open': 'status-open', 'In Progress': 'status-progress', 'Resolved': 'status-resolved' }[k.STATUS] || 'status-open';
+    const ts = k.CREATED_AT ? new Date(k.CREATED_AT).toLocaleString('id-ID') : '—';
+    const lastUpd = k.LAST_UPDATE ? new Date(k.LAST_UPDATE).toLocaleString('id-ID') : '—';
+    const kid = escapeHtml(String(k.ID));
+    const penyebab = k.PENYEBAB ? `<span class="badge-kategori ms-1"><i class="fas fa-tag me-1"></i>${escapeHtml(k.PENYEBAB)}</span>` : '';
+
+    return `
+      <div class="kendala-item ${borderCls}">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+          <div style="font-size:.82rem;font-weight:600;color:var(--text);flex:1">${escapeHtml(k.KENDALA || '—')}</div>
+          <span class="kendala-status-badge ${statusCls}">${escapeHtml(k.STATUS || 'Open')}</span>
+        </div>
+        <div class="d-flex align-items-center flex-wrap gap-1 mb-1" style="font-size:.72rem;color:var(--text-soft)">
+          <span><i class="fas fa-clock me-1"></i>${escapeHtml(ts)}</span>
+          <span class="mx-1">·</span>
+          <span><i class="fas fa-user me-1"></i>${escapeHtml(k.CREATED_BY || '—')}</span>
+          ${penyebab}
+        </div>
+        <div style="font-size:.7rem;color:var(--text-soft)"><i class="fas fa-history me-1"></i>Update: ${escapeHtml(lastUpd)}</div>
+        <div class="mt-2 d-flex gap-2">
+          <button class="btn btn-outline-primary btn-sm" style="font-size:.72rem;padding:.2rem .65rem"
+            onclick="openUpdateKendalaStatus('${kid}','${escapeHtml(k.STATUS || 'Open')}')">
+            <i class="fas fa-exchange-alt me-1"></i>Update Status
+          </button>
+          <button class="btn btn-outline-danger btn-sm" style="font-size:.72rem;padding:.2rem .65rem"
+            onclick="confirmDeleteKendala('${kid}')">
+            <i class="fas fa-trash me-1"></i>Hapus
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function submitKendala() {
+  const kendala = document.getElementById('kendalaText').value.trim();
+  if (!kendala) { toast('Deskripsi kendala tidak boleh kosong', 'error'); return; }
+  showLoading(true);
+  google.script.run
+    .withSuccessHandler(result => {
+      showLoading(false);
+      if (result.success) {
+        document.getElementById('kendalaText').value     = '';
+        document.getElementById('kendalaPenyebab').value = '';
+        document.getElementById('kendalaStatus').value   = 'Open';
+        toast('Kendala berhasil disimpan', 'success');
+        loadKendalaList(_activeKendalaTaskId);
+        loadKendalaStats();
+        loadTasks(); // refresh HAS_KENDALA badge
+      } else toast(result.message || 'Gagal menyimpan kendala', 'error');
+    })
+    .withFailureHandler(err => { showLoading(false); toast('Error: ' + err.message, 'error'); })
+    .addKendala({
+      TASK_ID:  _activeKendalaTaskId,
+      KENDALA:  kendala,
+      PENYEBAB: document.getElementById('kendalaPenyebab').value,
+      STATUS:   document.getElementById('kendalaStatus').value
+    });
+}
+
+// ── UPDATE STATUS KENDALA ──────────────────
+function openUpdateKendalaStatus(kendalaId, currentStatus) {
+  document.getElementById('updateKendalaId').value     = kendalaId;
+  document.getElementById('updateKendalaStatus').value = currentStatus;
+  bsKendalaStatusModal.show();
+}
+
+function confirmUpdateKendalaStatus() {
+  const id     = document.getElementById('updateKendalaId').value;
+  const status = document.getElementById('updateKendalaStatus').value;
+  if (!id) return;
+  showLoading(true);
+  google.script.run
+    .withSuccessHandler(result => {
+      showLoading(false);
+      bsKendalaStatusModal.hide();
+      if (result.success) {
+        toast('Status kendala diperbarui', 'success');
+        // Refresh wherever kendala list is visible
+        if (_activeKendalaTaskId) loadKendalaList(_activeKendalaTaskId);
+        loadKendalaStats();
+        // If on kendala page, refresh table
+        if (document.getElementById('page-kendala').classList.contains('active')) loadKendalaPage();
+      } else toast(result.message || 'Gagal update status', 'error');
+    })
+    .withFailureHandler(err => { showLoading(false); toast('Error: ' + err.message, 'error'); })
+    .updateKendalaStatus(id, status);
+}
+
+// ── DELETE KENDALA ──────────────────────────
+function confirmDeleteKendala(kendalaId) {
+  const btn    = document.getElementById('confirmDeleteKendalaBtn');
+  const newBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(newBtn, btn);
+  newBtn.addEventListener('click', () => {
+    bsDeleteKendalaModal.hide();
+    showLoading(true);
+    google.script.run
+      .withSuccessHandler(result => {
+        showLoading(false);
+        if (result.success) {
+          toast('Kendala dihapus', 'success');
+          if (_activeKendalaTaskId) loadKendalaList(_activeKendalaTaskId);
+          loadKendalaStats();
+          if (document.getElementById('page-kendala').classList.contains('active')) loadKendalaPage();
+          loadTasks();
+        } else toast(result.message || 'Gagal menghapus', 'error');
+      })
+      .withFailureHandler(err => { showLoading(false); toast('Error: ' + err.message, 'error'); })
+      .deleteKendala(kendalaId);
+  });
+  // Close kendala modal first to avoid z-index stacking
+  bsKendalaModal.hide();
+  setTimeout(() => bsDeleteKendalaModal.show(), 300);
+}
+
+// ── KENDALA PAGE (dedicated tab) ────────────
+function loadKendalaPage() {
+  const filters = {
+    status:   document.getElementById('kFilterStatus').value,
+    penyebab: document.getElementById('kFilterPenyebab').value,
+    search:   document.getElementById('kSearchInput').value.trim()
+  };
+  withTimeout(() => {
+    google.script.run
+      .withSuccessHandler(response => {
+        showLoading(false);
+        let list, total, tPages, cPage;
+        if (response && typeof response === 'object' && 'kendala' in response) {
+          list   = response.kendala || [];
+          total  = response.totalCount || 0;
+          tPages = response.totalPages || 1;
+          cPage  = response.currentPage || 1;
+        } else {
+          list   = response || [];
+          total  = list.length;
+          tPages = Math.ceil(total / K_PAGE_SIZE);
+          cPage  = kCurrentPage;
+        }
+        kTotalCount  = total;
+        kTotalPages  = tPages;
+        kCurrentPage = cPage;
+        _lastKendalaData = list;
+        renderKendalaTable(getSortedKendala());
+        updateKendalaPaginationUI();
+        document.getElementById('kendalaLastRefreshed').textContent = 'Diperbarui: ' + new Date().toLocaleTimeString('id-ID');
+      })
+      .withFailureHandler(err => {
+        showLoading(false);
+        toast('Error: ' + err.message, 'error');
+        document.getElementById('kendalaTableBody').innerHTML =
+          `<tr><td colspan="10"><div class="empty-state"><i class="fas fa-inbox"></i><p>Gagal memuat data</p></div></td></tr>`;
+      })
+      .getAllKendala(filters, kCurrentPage, K_PAGE_SIZE);
+  });
+}
+
+// ═══════════════════════════════════════════
+//  SORTING — Kendala Table (client-side, per halaman yang sedang dimuat)
+// ═══════════════════════════════════════════
+function sortKendalaBy(key) {
+  if (kendalaSortKey === key) {
+    kendalaSortDir = (kendalaSortDir === 'asc') ? 'desc' : 'asc';
+  } else {
+    kendalaSortKey = key;
+    kendalaSortDir = 'asc';
+  }
+  updateSortIndicators('.kendala-table', kendalaSortKey, kendalaSortDir);
+  renderKendalaTable(getSortedKendala());
+}
+
+function getSortedKendala() {
+  const arr = (_lastKendalaData || []).slice();
+  if (!kendalaSortKey) return arr;
+  const key = kendalaSortKey;
+  const dir = kendalaSortDir === 'desc' ? -1 : 1;
+  const isDateKey = (key === 'CREATED_AT' || key === 'LAST_UPDATE');
+  const isNumKey  = (key === 'TASK_ID');
+  arr.sort((a, b) => {
+    let va = a[key], vb = b[key];
+    if (va === undefined || va === null) va = '';
+    if (vb === undefined || vb === null) vb = '';
+
+    if (isNumKey) {
+      const na = parseFloat(va), nb = parseFloat(vb);
+      const cmp = (isNaN(na) ? 0 : na) - (isNaN(nb) ? 0 : nb);
+      return cmp * dir;
+    }
+    if (isDateKey) {
+      const da = va ? new Date(va).getTime() : 0;
+      const db = vb ? new Date(vb).getTime() : 0;
+      return (da - db) * dir;
+    }
+    return String(va).localeCompare(String(vb), 'id', { sensitivity: 'base', numeric: true }) * dir;
+  });
+  return arr;
+}
+
+function renderKendalaTable(data) {
+  const tbody = document.getElementById('kendalaTableBody');
+  if (!data || !data.length) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><i class="fas fa-inbox"></i><p>Tidak ada data kendala yang cocok</p></div></td></tr>`;
+    return;
+  }
+  const offset = (kCurrentPage - 1) * K_PAGE_SIZE;
+  tbody.innerHTML = data.map((k, idx) => {
+    const statusCls = { 'Open': 'ks-open', 'In Progress': 'ks-progress', 'Resolved': 'ks-resolved' }[k.STATUS] || 'ks-open';
+    const kid = escapeHtml(String(k.ID));
+    const penyebab = k.PENYEBAB ? `<span class="badge-kategori">${escapeHtml(k.PENYEBAB)}</span>` : '<span class="text-muted">—</span>';
+
+    return `<tr>
+      <td style="font-size:.75rem;color:var(--text-soft);font-family:var(--font-mono)">${offset + idx + 1}</td>
+      <td>
+        <span class="task-id">#${escapeHtml(String(k.TASK_ID))}</span>
+        <button class="btn btn-link btn-sm p-0 d-block" style="font-size:.68rem"
+          onclick="openKendalaModalFromPage('${escapeHtml(String(k.TASK_ID))}')">
+          <i class="fas fa-external-link-alt me-1"></i>Lihat
+        </button>
+       </td>
+      <td style="font-size:.78rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(k.TASK_JUDUL)}">${escapeHtml(k.TASK_JUDUL || '—')}</td>
+      <td style="font-size:.82rem;max-width:220px;word-break:break-word;white-space:normal">${escapeHtml(k.KENDALA || '—')}</td>
+      <td>${penyebab}</td>
+      <td><span class="kendala-status-badge ${statusCls}">${escapeHtml(k.STATUS || '—')}</span></td>
+      <td style="font-size:.72rem;color:var(--text-soft);white-space:nowrap">${formatDateTime(k.CREATED_AT)}</td>
+      <td style="font-size:.75rem">${escapeHtml(k.CREATED_BY || '—')}</td>
+      <td style="font-size:.72rem;color:var(--text-soft);white-space:nowrap">${formatDateTime(k.LAST_UPDATE)}</td>
+      <td>
+        <div class="table-actions">
+          <button class="btn-action edit"   title="Update Status" onclick="openUpdateKendalaStatusFromPage('${kid}','${escapeHtml(k.STATUS || 'Open')}')">
+            <i class="fas fa-exchange-alt"></i>
+          </button>
+          <button class="btn-action delete" title="Hapus" onclick="confirmDeleteKendalaFromPage('${kid}')">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+       </td>
+     </tr>`;
+  }).join('');
+}
+
+function openKendalaModalFromPage(taskId) {
+  _activeKendalaTaskId = String(taskId).trim();
+  // Switch back to dashboard view to show task context, or just open modal directly
+  document.getElementById('kendalaText').value     = '';
+  document.getElementById('kendalaPenyebab').value = '';
+  document.getElementById('kendalaStatus').value   = 'Open';
+  populateKendalaPenyebabDropdowns();
+  bsKendalaModal.show();
+  loadKendalaList(_activeKendalaTaskId);
+}
+
+function openUpdateKendalaStatusFromPage(kendalaId, currentStatus) {
+  openUpdateKendalaStatus(kendalaId, currentStatus);
+}
+
+function confirmDeleteKendalaFromPage(kendalaId) {
+  const btn    = document.getElementById('confirmDeleteKendalaBtn');
+  const newBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(newBtn, btn);
+  newBtn.addEventListener('click', () => {
+    bsDeleteKendalaModal.hide();
+    showLoading(true);
+    google.script.run
+      .withSuccessHandler(result => {
+        showLoading(false);
+        if (result.success) {
+          toast('Kendala dihapus', 'success');
+          loadKendalaPage();
+          loadKendalaStats();
+          loadTasks();
+        } else toast(result.message || 'Gagal menghapus', 'error');
+      })
+      .withFailureHandler(err => { showLoading(false); toast('Error: ' + err.message, 'error'); })
+      .deleteKendala(kendalaId);
+  });
+  bsDeleteKendalaModal.show();
+}
+
+function goToKendalaPage(page) {
+  if (!page || isNaN(page)) return;
+  page = Math.max(1, Math.min(kTotalPages, page));
+  if (page === kCurrentPage) { syncKendalaPageJumpInput(); return; }
+  kCurrentPage = page; loadKendalaPage();
+}
+function jumpToKendalaPage() {
+  const input = document.getElementById('kPageJumpInput');
+  const val = parseInt(input.value, 10);
+  if (isNaN(val)) { syncKendalaPageJumpInput(); return; }
+  goToKendalaPage(val);
+}
+function syncKendalaPageJumpInput() {
+  const input = document.getElementById('kPageJumpInput');
+  if (input) input.value = kCurrentPage;
+}
+
+function updateKendalaPaginationUI() {
+  const start = (kCurrentPage - 1) * K_PAGE_SIZE + 1;
+  const end   = Math.min(kCurrentPage * K_PAGE_SIZE, kTotalCount);
+  document.getElementById('kPaginationInfo').textContent = kTotalCount > 0 ? `Menampilkan ${start}–${end} dari ${kTotalCount} kendala` : 'Tidak ada kendala';
+  document.getElementById('kPageTotalIndicator').textContent = kTotalPages;
+  const jumpInput = document.getElementById('kPageJumpInput');
+  jumpInput.max = kTotalPages;
+  jumpInput.value = kCurrentPage;
+  document.getElementById('kFirstPageBtn').disabled      = kCurrentPage <= 1;
+  document.getElementById('kPrevPageBtn').disabled       = kCurrentPage <= 1;
+  document.getElementById('kNextPageBtn').disabled       = kCurrentPage >= kTotalPages;
+  document.getElementById('kLastPageBtn').disabled       = kCurrentPage >= kTotalPages;
+}
+
+function resetKendalaFilters() {
+  document.getElementById('kFilterStatus').value   = '';
+  document.getElementById('kFilterPenyebab').value = '';
+  document.getElementById('kSearchInput').value    = '';
+  kCurrentPage = 1;
+  loadKendalaPage();
+}
+
+function refreshKendalaPage() {
+  kCurrentPage = 1;
+  loadKendalaPage();
+  loadKendalaStats();
+  toast('Data diperbarui', 'info');
+}
+// ==================== PERFORMANCE OPTIMIZATION v1 (2026-08-11) ====================
+var pmLatestDashboard = null;
+var pmBootstrapLoaded = false;
+var pmBootstrapKendalaStats = null;
+var pmRequestSequence = 0;
+var pmLoadingDelay = null;
+
+function pmReadFilters() {
+  return {
+    status: document.getElementById("filterStatus").value,
+    priority: document.getElementById("filterPriority").value,
+    kategori: document.getElementById("filterKategori").value,
+    assignee: document.getElementById("filterAssignee").value,
+    creator: document.getElementById("filterCreator").value,
+    search: document.getElementById("searchInput").value.trim()
+  };
+}
+
+function pmApplyCurrentUser(user) {
+  currentUser = user || { USER_ID: null, NAMA_LENGKAP: "Guest", ROLE: "viewer" };
+  var name = currentUser.NAMA_LENGKAP || currentUser.EMAIL || "Guest";
+  document.getElementById("currentUserName").textContent = name;
+  document.getElementById("currentUserRole").textContent = currentUser.ROLE || "";
+  document.getElementById("userAvatar").textContent =
+    name.split(" ").map(function(word) { return word[0]; }).slice(0, 2).join("").toUpperCase() || "?";
+}
+
+function pmApplyKendalaStats(stats) {
+  stats = stats || { total: 0, byStatus: {} };
+  var byStatus = stats.byStatus || {};
+  document.getElementById("statKendalaOpen").textContent = byStatus["Open"] || 0;
+
+  if (document.getElementById("kStatTotal")) {
+    document.getElementById("kStatTotal").textContent = stats.total || 0;
+    document.getElementById("kStatOpen").textContent = byStatus["Open"] || 0;
+    document.getElementById("kStatProgress").textContent = byStatus["In Progress"] || 0;
+    document.getElementById("kStatResolved").textContent = byStatus["Resolved"] || 0;
+  }
+}
+
+function pmApplyStats(stats, totalJumlahData) {
+  stats = stats || {};
+  var byStatus = stats.byStatus || {};
+  var byPriority = stats.byPriority || {};
+  document.getElementById("statTotal").textContent = stats.total || 0;
+  document.getElementById("statInProgress").textContent = byStatus["In Progress"] || 0;
+  document.getElementById("statDone").textContent = byStatus["Done"] || 0;
+  document.getElementById("statOverdue").textContent = stats.overdue || 0;
+  document.getElementById("statUrgentPriority").textContent = byPriority["Urgent"] || 0;
+  document.getElementById("statToDo").textContent = byStatus["To Do"] || 0;
+  document.getElementById("statTotalJumlahData").textContent = totalJumlahData || 0;
+}
+
+function pmApplyDashboard(bundle) {
+  if (!bundle) return;
+  pmLatestDashboard = bundle;
+
+  currentTasks = bundle.tasks || [];
+  totalTasksCount = bundle.totalCount || 0;
+  totalPages = bundle.totalPages || 1;
+  currentPage = bundle.currentPage || 1;
+
+  renderTasksTable(getSortedTasks());
+  updatePaginationUI();
+  pmApplyStats(bundle.stats, bundle.totalJumlahData);
+  displayAssigneeStats(bundle.assigneeStats || []);
+
+  document.getElementById("lastRefreshed").textContent =
+    "Diperbarui: " + new Date().toLocaleTimeString("id-ID");
+}
+
+// Overlay diberi jeda agar refresh cepat tidak membuat layar berkedip.
+function showLoading(show) {
+  var existing = document.getElementById("globalLoading");
+  if (show) {
+    if (existing || pmLoadingDelay) return;
+    pmLoadingDelay = setTimeout(function() {
+      pmLoadingDelay = null;
+      if (document.getElementById("globalLoading")) return;
+      var el = document.createElement("div");
+      el.id = "globalLoading";
+      el.className = "loading-overlay";
+      el.innerHTML = '<div class="spinner-box"><div class="spinner-border text-primary mb-3"></div><div class="text-muted small">Memuat data…</div></div>';
+      document.body.appendChild(el);
+    }, 180);
+  } else {
+    if (pmLoadingDelay) {
+      clearTimeout(pmLoadingDelay);
+      pmLoadingDelay = null;
+    }
+    if (_loadingTimer) {
+      clearTimeout(_loadingTimer);
+      _loadingTimer = null;
+    }
+    if (existing) existing.remove();
+  }
+}
+
+function populateAssigneeDropdowns() {
+  var filterHtml = '<option value="">Semua</option>';
+  var formHtml = '<option value="">— Pilih user —</option>';
+
+  (users || []).forEach(function(user) {
+    var id = escapeHtml(String(user.USER_ID));
+    var name = escapeHtml(user.NAMA_LENGKAP);
+    filterHtml += '<option value="' + id + '">' + name + '</option>';
+    formHtml += '<option value="' + id + '" data-name="' + name + '">' + name + '</option>';
+  });
+
+  document.getElementById("filterAssignee").innerHTML = filterHtml;
+  document.getElementById("assignUserSelect").innerHTML = formHtml;
+}
+
+function populateCreatorDropdown() {
+  var html = '<option value="">Semua</option>';
+  (users || []).forEach(function(user) {
+    html += '<option value="' + escapeHtml(String(user.USER_ID)) + '">' +
+      escapeHtml(user.NAMA_LENGKAP) + '</option>';
+  });
+  document.getElementById("filterCreator").innerHTML = html;
+}
+
+// Bootstrap: config, user, users, kendala, tabel dan statistik dalam 1 request.
+function loadConfig() {
+  return new Promise(function(resolve) {
+    google.script.run
+      .withSuccessHandler(function(payload) {
+        payload = payload || {};
+        appConfig = payload.config || {
+          KATEGORI: [],
+          PRIORITAS: [],
+          STATUS: [],
+          PENYEBAB_KENDALA: []
+        };
+        populateAllDropdowns();
+
+        users = payload.users || [];
+        populateAssigneeDropdowns();
+        populateCreatorDropdown();
+
+        pmApplyCurrentUser(payload.currentUser);
+        pmBootstrapKendalaStats = payload.kendalaStats || null;
+        pmApplyKendalaStats(pmBootstrapKendalaStats);
+        pmApplyDashboard(payload.dashboard);
+
+        pmBootstrapLoaded = true;
+        resolve();
+      })
+      .withFailureHandler(function(error) {
+        console.error("Bootstrap dashboard gagal", error);
+        pmBootstrapLoaded = false;
+
+        google.script.run
+          .withSuccessHandler(function(config) {
+            appConfig = config || {
+              KATEGORI: [],
+              PRIORITAS: [],
+              STATUS: [],
+              PENYEBAB_KENDALA: []
+            };
+            populateAllDropdowns();
+            resolve();
+          })
+          .withFailureHandler(function() {
+            appConfig = {
+              KATEGORI: [],
+              PRIORITAS: [],
+              STATUS: [],
+              PENYEBAB_KENDALA: []
+            };
+            populateAllDropdowns();
+            resolve();
+          })
+          .getAppConfig();
+      })
+      .getDashboardBootstrap(pmReadFilters(), currentPage, PAGE_SIZE);
+  });
+}
+
+function loadCurrentUser() {
+  if (pmBootstrapLoaded) return;
+  google.script.run
+    .withSuccessHandler(pmApplyCurrentUser)
+    .withFailureHandler(function() {
+      pmApplyCurrentUser({ USER_ID: null, NAMA_LENGKAP: "Guest", ROLE: "viewer" });
+    })
+    .getCurrentUser();
+}
+
+function loadUsers() {
+  if (pmBootstrapLoaded) return;
+  google.script.run
+    .withSuccessHandler(function(data) {
+      users = data || [];
+      populateAssigneeDropdowns();
+      populateCreatorDropdown();
+      loadTasks();
+    })
+    .withFailureHandler(function(error) {
+      console.error(error);
+      toast("Gagal memuat user", "error");
+      loadTasks();
+    })
+    .getUsers();
+}
+
+// Satu request per filter/page; respons lama diabaikan agar pencarian tidak tertukar.
+function loadTasks() {
+  var requestId = ++pmRequestSequence;
+  var blockScreen = !pmBootstrapLoaded && !pmLatestDashboard;
+  if (blockScreen) showLoading(true);
+
+  google.script.run
+    .withSuccessHandler(function(bundle) {
+      if (requestId !== pmRequestSequence) return;
+      showLoading(false);
+      pmApplyDashboard(bundle);
+      pmBootstrapLoaded = true;
+    })
+    .withFailureHandler(function(error) {
+      if (requestId !== pmRequestSequence) return;
+      showLoading(false);
+      toast("Error: " + (error && error.message ? error.message : error), "error");
+      if (!pmLatestDashboard) renderEmptyTable("Gagal memuat data");
+    })
+    .getDashboardBundle(pmReadFilters(), currentPage, PAGE_SIZE);
+}
+
+function loadStatsAndJumlah() {
+  if (pmLatestDashboard) {
+    pmApplyStats(pmLatestDashboard.stats, pmLatestDashboard.totalJumlahData);
+  }
+}
+
+function loadGlobalStats() {
+  if (pmLatestDashboard) pmApplyStats(pmLatestDashboard.stats, pmLatestDashboard.totalJumlahData);
+}
+
+function loadGlobalJumlahData() {
+  if (pmLatestDashboard) {
+    document.getElementById("statTotalJumlahData").textContent =
+      pmLatestDashboard.totalJumlahData || 0;
+  }
+}
+
+function loadAssigneeStats() {
+  if (pmLatestDashboard) displayAssigneeStats(pmLatestDashboard.assigneeStats || []);
+}
+
+function loadKendalaStats(forceRefresh) {
+  if (!forceRefresh && pmBootstrapKendalaStats) {
+    pmApplyKendalaStats(pmBootstrapKendalaStats);
+    pmBootstrapKendalaStats = null;
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(pmApplyKendalaStats)
+    .withFailureHandler(function() {})
+    .getKendalaStats();
+}
+
+function refreshAll() {
+  currentPage = 1;
+  loadTasks();
+  loadKendalaStats(true);
+  toast("Data diperbarui", "info");
+}
+// ================== END PERFORMANCE OPTIMIZATION ==================
+
+</script>
+</body>
+</html>
